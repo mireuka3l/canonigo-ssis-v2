@@ -14,27 +14,19 @@ public class GUI extends javax.swing.JFrame {
     private String collegeSortBy = "code"; private boolean collegeSortDesc = false;
 
     private String studentNameQuery = "";
-    private String studentProgramFilter = "All";
-    private String studentCollegeFilter = "All";
-    private String studentYearFilter = "All";
+    private String studentProgramFilter = "All Programs";
+    private String studentCollegeFilter = "All Colleges";
+    private String studentYearFilter = "All Year Levels";
 
     private String programNameQuery = "";
-    private String programCollegeFilter = "All";
+    private String programCollegeFilter = "All Colleges";
 
     private String collegeNameQuery = "";
-    
-    private int hoveredRow12 = -1;
-    private int hoveredRow13 = -1;
-    private int hoveredRow14 = -1;
     
     private int currentStudentPage = 1;
     private int currentProgramPage = 1;
     private int currentCollegePage = 1;
     private static final int PAGE_SIZE = 15;
-
-    private java.util.List<Object[]> currentStudentData = new java.util.ArrayList<>();
-    private java.util.List<Object[]> currentProgramData = new java.util.ArrayList<>();
-    private java.util.List<Object[]> currentCollegeData = new java.util.ArrayList<>();
     
     public GUI() {
 
@@ -80,13 +72,29 @@ public class GUI extends javax.swing.JFrame {
         reloadAllTables();
         setupActionsColumn();
         
+        tblStudents.getColumnModel().getColumn(0).setPreferredWidth(15);
+        tblStudents.getColumnModel().getColumn(1).setPreferredWidth(10);
+        tblStudents.getColumnModel().getColumn(2).setPreferredWidth(10);
+        tblStudents.getColumnModel().getColumn(3).setPreferredWidth(10);
+        tblStudents.getColumnModel().getColumn(4).setPreferredWidth(10);
+        tblStudents.getColumnModel().getColumn(5).setPreferredWidth(10);
+        tblStudents.getColumnModel().getColumn(6).setPreferredWidth(10);
+        tblStudents.getColumnModel().getColumn(7).setPreferredWidth(50);
+        
+        tblPrograms.getColumnModel().getColumn(0).setPreferredWidth(120);
+        tblPrograms.getColumnModel().getColumn(0).setMaxWidth(130);
+        tblPrograms.getColumnModel().getColumn(1).setPreferredWidth(320);
+        tblPrograms.getColumnModel().getColumn(2).setPreferredWidth(320);
+        tblPrograms.getColumnModel().getColumn(3).setPreferredWidth(290);
+        tblPrograms.getColumnModel().getColumn(3).setMaxWidth(290);
+        
         tblStudents.setDefaultEditor(Object.class, null);
         tblPrograms.setDefaultEditor(Object.class, null);
         tblColleges.setDefaultEditor(Object.class, null);
         
-        tblStudents.setAutoCreateRowSorter(false);
-        tblPrograms.setAutoCreateRowSorter(false);
-        tblColleges.setAutoCreateRowSorter(false);
+        tblStudents.setRowSorter(null);
+        tblPrograms.setRowSorter(null);
+        tblColleges.setRowSorter(null);
         
         setupHeaderSorting();
        
@@ -136,8 +144,8 @@ public class GUI extends javax.swing.JFrame {
         styleNavButton(jButton2, all);
         styleNavButton(jButton3, all);
         
-        jButton1.setBackground(new java.awt.Color(255,255,255));
-        jButton1.setForeground(java.awt.Color.BLACK);
+        jButton1.setBackground(new java.awt.Color(18, 18, 32));
+        jButton1.setForeground(new java.awt.Color(199, 202, 219));
              
         jTextField1.setForeground(new java.awt.Color(180, 180, 180)); 
         jTextField1.setText("Search students...");
@@ -218,6 +226,7 @@ public class GUI extends javax.swing.JFrame {
 
                 currentStudentPage = 1;
                 renderStudentPage();
+                tblStudents.getTableHeader().repaint();
             }
         });
 
@@ -240,6 +249,7 @@ public class GUI extends javax.swing.JFrame {
 
                 currentProgramPage = 1;
                 renderProgramPage();
+                tblPrograms.getTableHeader().repaint();
             }
         });
 
@@ -261,8 +271,21 @@ public class GUI extends javax.swing.JFrame {
 
                 currentCollegePage = 1;
                 renderCollegePage();
+                tblColleges.getTableHeader().repaint();
             }
         });
+
+        installSortHeaderRenderer(tblStudents,
+            new String[]{"id","firstname","lastname","program_code","college_code","year","gender", null},
+            () -> studentSortBy, () -> studentSortDesc);
+
+        installSortHeaderRenderer(tblPrograms,
+            new String[]{"code","name","college", null},
+            () -> programSortBy, () -> programSortDesc);
+
+        installSortHeaderRenderer(tblColleges,
+            new String[]{"code","name", null},
+            () -> collegeSortBy, () -> collegeSortDesc);
     }
     
     private void onDeleteCollege(int row) {
@@ -449,7 +472,7 @@ public class GUI extends javax.swing.JFrame {
         if (programNameQuery.equals("Search programs...")) programNameQuery = "";
 
         programCollegeFilter = jComboBox3.getSelectedItem() != null
-                ? jComboBox3.getSelectedItem().toString() : "All";
+                ? jComboBox3.getSelectedItem().toString() : "All Colleges";
 
         currentProgramPage = 1;
         renderProgramPage();
@@ -460,13 +483,13 @@ public class GUI extends javax.swing.JFrame {
         if (studentNameQuery.equals("Search students...")) studentNameQuery = "";
 
         studentProgramFilter = jComboBox2.getSelectedItem() != null
-                ? jComboBox2.getSelectedItem().toString() : "All";
+                ? jComboBox2.getSelectedItem().toString() : "All Programs";
 
         studentCollegeFilter = jComboBox6.getSelectedItem() != null
-                ? jComboBox6.getSelectedItem().toString() : "All";
+                ? jComboBox6.getSelectedItem().toString() : "All Colleges";
 
         studentYearFilter = jComboBox5.getSelectedItem() != null
-                ? jComboBox5.getSelectedItem().toString() : "All";
+                ? jComboBox5.getSelectedItem().toString() : "All Year Levels";
 
         currentStudentPage = 1;
         renderStudentPage();
@@ -611,14 +634,18 @@ public class GUI extends javax.swing.JFrame {
             public java.awt.Component getTableCellRendererComponent(
                     javax.swing.JTable t, Object value, boolean isSelected, boolean hasFocus, int row, int col) {
 
-                super.getTableCellRendererComponent(t, value, isSelected, hasFocus, row, col);
+                super.getTableCellRendererComponent(t, value, false, false, row, col);
 
-                setOpaque(false); // keep transparent look
+                setOpaque(true);
+                setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
+
+                setBackground(row % 2 == 0
+                    ? java.awt.Color.WHITE
+                    : new java.awt.Color(240, 238, 233));
                 setForeground(new java.awt.Color(26, 26, 46));
 
-                // horizontal padding + bottom border for each row
                 setBorder(javax.swing.BorderFactory.createCompoundBorder(
-                    javax.swing.BorderFactory.createMatteBorder(0, 0, 1, 0, new java.awt.Color(220, 220, 220)),
+                    javax.swing.BorderFactory.createMatteBorder(1, 1, 1, 1, new java.awt.Color(220, 220, 220)),
                     javax.swing.BorderFactory.createEmptyBorder(0, 10, 0, 10)
                 ));
 
@@ -636,19 +663,19 @@ public class GUI extends javax.swing.JFrame {
         header.setReorderingAllowed(false);
     }
     
+    
     private void makeTableTransparent(javax.swing.JTable table, javax.swing.JScrollPane scroll) {
-        table.setOpaque(false);
-        table.setBackground(new java.awt.Color(0, 0, 0, 0));
+        table.setOpaque(true);
+        table.setBackground(new java.awt.Color(240, 238, 233));
         table.setFillsViewportHeight(true);
 
-        // Header (optional transparent)
         javax.swing.table.JTableHeader h = table.getTableHeader();
         h.setOpaque(false);
         h.setBackground(new java.awt.Color(0, 0, 0, 0));
 
-        // Viewport + scrollpane must also be transparent
         scroll.setOpaque(false);
-        scroll.getViewport().setOpaque(false);
+        scroll.getViewport().setOpaque(true);
+        scroll.getViewport().setBackground(new java.awt.Color(240, 238, 233));
         scroll.setBorder(javax.swing.BorderFactory.createEmptyBorder());
         scroll.setViewportBorder(javax.swing.BorderFactory.createEmptyBorder());
     }
@@ -656,23 +683,62 @@ public class GUI extends javax.swing.JFrame {
     private javax.swing.table.TableCellRenderer makeActionsRenderer() {
         return (table, value, isSelected, hasFocus, row, col) -> {
             javax.swing.JPanel panel = new javax.swing.JPanel(
-                new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 8, 6));
-            panel.setBackground(row % 2 == 0 ? java.awt.Color.WHITE : new java.awt.Color(250, 250, 250));
+                new java.awt.FlowLayout(java.awt.FlowLayout.CENTER, 10, 6));
+            panel.setOpaque(true);
+            panel.setBackground(row % 2 == 0 ? java.awt.Color.WHITE : new java.awt.Color(240, 238, 233));
 
-            javax.swing.JLabel edit = new javax.swing.JLabel("✎");
-            edit.setForeground(new java.awt.Color(46, 134, 171));
-            javax.swing.JLabel del = new javax.swing.JLabel("🗑");
-            del.setForeground(new java.awt.Color(192, 57, 43));
+            javax.swing.JButton editBtn = new javax.swing.JButton("Edit");
+            editBtn.setContentAreaFilled(false);
+            editBtn.setBorderPainted(false);
+            editBtn.setFocusPainted(false);
+            editBtn.setOpaque(false);
+            editBtn.setForeground(new java.awt.Color(39, 174, 96));
+            editBtn.setFont(new java.awt.Font("Syne", java.awt.Font.BOLD, 12));
+            editBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
 
-            panel.add(edit);
-            panel.add(del);
+            javax.swing.JButton delBtn = new javax.swing.JButton("Delete");
+            delBtn.setContentAreaFilled(false);
+            delBtn.setBorderPainted(false);
+            delBtn.setFocusPainted(false);
+            delBtn.setOpaque(false);
+            delBtn.setForeground(new java.awt.Color(192, 57, 43));
+            delBtn.setFont(new java.awt.Font("Syne", java.awt.Font.BOLD, 12));
+            delBtn.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+
+            panel.add(editBtn);
+            panel.add(delBtn);
             return panel;
         };
+    }
+    
+    private void installSortHeaderRenderer(
+            javax.swing.JTable table,
+            String[] dbCols,
+            java.util.function.Supplier<String> getSortBy,
+            java.util.function.Supplier<Boolean> getSortDesc) {
+
+        javax.swing.table.TableCellRenderer original = table.getTableHeader().getDefaultRenderer();
+
+        table.getTableHeader().setDefaultRenderer((t, value, isSelected, hasFocus, row, col) -> {
+            java.awt.Component c = original.getTableCellRendererComponent(
+                    t, value, isSelected, hasFocus, row, col);
+
+            if (c instanceof javax.swing.JLabel label) {
+                String dbCol = (col >= 0 && col < dbCols.length) ? dbCols[col] : null;
+                String text  = value != null ? value.toString() : "";
+
+                if (dbCol != null && dbCol.equals(getSortBy.get())) {
+                    label.setText(text + (getSortDesc.get() ? "  ↓" : "  ↑"));
+                } else {
+                    label.setText(text);
+                }
+            }
+            return c;
+        });
     }
 
     private void setupActionsColumn() {
         tblStudents.getColumnModel().getColumn(7).setCellRenderer(makeActionsRenderer());
-        tblStudents.getColumnModel().getColumn(6).setCellRenderer(makeActionsRenderer());
         tblPrograms.getColumnModel().getColumn(3).setCellRenderer(makeActionsRenderer());
         tblColleges.getColumnModel().getColumn(2).setCellRenderer(makeActionsRenderer());
 
@@ -743,75 +809,18 @@ public class GUI extends javax.swing.JFrame {
         scrollPane.getParent().revalidate();
         scrollPane.getParent().repaint();
     }
-    
-    private java.util.List<Object[]> getAllRows() {
-        java.util.List<Object[]> rows = new java.util.ArrayList<>();
-        try {
-            for (java.util.Map<String,String> s : SqliteDb.studentList("id", false, 0, 0)) {
-                rows.add(new Object[]{
-                    s.get("id"), s.get("firstname"), s.get("lastname"),
-                    s.get("program_code"), s.get("year"), s.get("gender"), ""
-                });
-            }
-        } catch (java.sql.SQLException e) { e.printStackTrace(); }
-        return rows;
-    }
-
-    private java.util.List<Object[]> getAllProgramRows() {
-        java.util.List<Object[]> rows = new java.util.ArrayList<>();
-        try {
-            java.util.Map<String,String> collegeNames = new java.util.HashMap<>();
-            for (java.util.Map<String,String> c: SqliteDb.collegeList("code", false, 0, 0)) {
-                collegeNames.put(c.get("code"), c.get("name"));
-            }
-            for (java.util.Map<String,String> p : SqliteDb.programList("code", false, 0, 0)) {
-                String collegeCode = p.get("college");
-                String collegeName = collegeNames.getOrDefault(collegeCode, collegeCode);
-                rows.add(new Object[]{
-                    p.get("code"),
-                    p.get("name"),
-                    collegeName,
-                    ""
-                });
-            }
-        } catch (java.sql.SQLException e) { e.printStackTrace(); }
-        return rows;
-    }
-
-    private java.util.List<Object[]> getAllCollegeRows() {
-        java.util.List<Object[]> rows = new java.util.ArrayList<>();
-        try {
-            for (java.util.Map<String,String> c : SqliteDb.collegeList("code", false, 0, 0)) {
-                rows.add(new Object[]{
-                    c.get("code"),
-                    c.get("name"),
-                    ""
-                });
-            }
-        } catch (java.sql.SQLException e) { e.printStackTrace(); }
-        return rows;
-    }
 
     public void reloadStudentTable() {
-        try {
-            currentStudentData = getAllRows();
-        } catch (Exception e) { e.printStackTrace(); }
         currentStudentPage = 1;
         renderStudentPage();
     }
 
     public void reloadProgramTable() {
-        try {
-            currentProgramData = getAllProgramRows();
-        } catch (Exception e) { e.printStackTrace(); }
         currentProgramPage = 1;
         renderProgramPage();
     }
 
     public void reloadCollegeTable() {
-        try {
-            currentCollegeData = getAllCollegeRows();
-        } catch (Exception e) { e.printStackTrace(); }
         currentCollegePage = 1;
         renderCollegePage();
     }
@@ -852,11 +861,11 @@ public class GUI extends javax.swing.JFrame {
 
 
     private void styleNavButton(javax.swing.JButton btn, javax.swing.JButton[] allBtns) {
-        java.awt.Color normal     = new java.awt.Color(243,243,245);
-        java.awt.Color hover      = new java.awt.Color(225,225,227);
-        java.awt.Color active     = new java.awt.Color(255, 255, 255);
-        java.awt.Color textNormal = new java.awt.Color(102,102,102);
-        java.awt.Color textActive = java.awt.Color.BLACK;
+        java.awt.Color normal     = new java.awt.Color(26,26,46);
+        java.awt.Color hover      = new java.awt.Color(44, 44, 60);
+        java.awt.Color active     = new java.awt.Color(18, 18, 32);
+        java.awt.Color textNormal = new java.awt.Color(232, 234, 246);
+        java.awt.Color textActive = new java.awt.Color(199, 202, 219);
 
         btn.setBackground(normal);
         btn.setForeground(textNormal);
@@ -890,12 +899,10 @@ public class GUI extends javax.swing.JFrame {
     
     private void updateCounts() {
         try {
-            jLabel2.setText(SqliteDb.studentList("id", false, 0, 0).size() + " total");
-            jLabel3.setText(SqliteDb.programList("code", false, 0, 0).size() + " total");
-            jLabel8.setText(SqliteDb.collegeList("code", false, 0, 0).size() + " total");
-        } catch (java.sql.SQLException e) {
-            e.printStackTrace();
-        }
+            jLabel2.setText(SqliteDb.studentCount() + " total");
+            jLabel3.setText(SqliteDb.programCount() + " total");
+            jLabel8.setText(SqliteDb.collegeCount() + " total");
+        } catch (java.sql.SQLException e) { e.printStackTrace(); }
     }
     
     /**
@@ -960,15 +967,15 @@ public class GUI extends javax.swing.JFrame {
         setSize(new java.awt.Dimension(1280, 720));
         getContentPane().setLayout(null);
 
-        jPanel3.setBackground(new java.awt.Color(255, 255, 255));
+        jPanel3.setBackground(new java.awt.Color(240, 238, 233));
         jPanel3.setBorder(javax.swing.BorderFactory.createMatteBorder(0, 0, 1, 0, new java.awt.Color(242, 242, 242)));
         jPanel3.setFocusCycleRoot(true);
         jPanel3.setPreferredSize(new java.awt.Dimension(880, 700));
 
         jLabel1.setBackground(new java.awt.Color(240, 238, 233));
-        jLabel1.setFont(new java.awt.Font("Inter", 1, 24)); // NOI18N
+        jLabel1.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
         jLabel1.setForeground(new java.awt.Color(26, 26, 46));
-        jLabel1.setText("Student Information System");
+        jLabel1.setText("Student Information System Version 2");
 
         jLabel14.setBackground(new java.awt.Color(240, 238, 233));
         jLabel14.setFont(new java.awt.Font("Inter", 0, 14)); // NOI18N
@@ -979,7 +986,8 @@ public class GUI extends javax.swing.JFrame {
         jSeparator1.setRequestFocusEnabled(false);
         jSeparator1.setVerifyInputWhenFocusTarget(false);
 
-        roundedPanel1.setBackground(new java.awt.Color(230, 230, 234));
+        roundedPanel1.setBackground(new java.awt.Color(240, 238, 233));
+        roundedPanel1.setOpaque(true);
         roundedPanel1.setRoundBottomLeft(30);
         roundedPanel1.setRoundBottomRight(30);
         roundedPanel1.setRoundTopLeft(30);
@@ -1051,14 +1059,14 @@ public class GUI extends javax.swing.JFrame {
             .addGroup(jPanel3Layout.createSequentialGroup()
                 .addGap(21, 21, 21)
                 .addGroup(jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(roundedPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel14)
-                    .addComponent(jLabel1))
-                .addGap(571, 776, Short.MAX_VALUE))
+                    .addComponent(jLabel1)
+                    .addComponent(roundedPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
         jPanel3Layout.setVerticalGroup(
             jPanel3Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, jPanel3Layout.createSequentialGroup()
+            .addGroup(jPanel3Layout.createSequentialGroup()
                 .addGap(20, 20, 20)
                 .addComponent(jLabel1)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -1067,13 +1075,13 @@ public class GUI extends javax.swing.JFrame {
                 .addComponent(jSeparator1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(roundedPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(27, Short.MAX_VALUE))
+                .addContainerGap(26, Short.MAX_VALUE))
         );
 
         getContentPane().add(jPanel3);
         jPanel3.setBounds(0, 0, 1230, 160);
 
-        jPanel8.setBackground(new java.awt.Color(255, 255, 255));
+        jPanel8.setBackground(new java.awt.Color(240, 238, 233));
         jPanel8.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 18, 8, 18));
         jPanel8.setForeground(new java.awt.Color(255, 255, 255));
         jPanel8.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -1082,7 +1090,7 @@ public class GUI extends javax.swing.JFrame {
         jPanel8.setPreferredSize(new java.awt.Dimension(1760, 1080));
         jPanel8.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        btnCollegesPrev.setBackground(new java.awt.Color(232, 79, 39));
+        btnCollegesPrev.setBackground(new java.awt.Color(26, 26, 46));
         btnCollegesPrev.setFont(new java.awt.Font("Syne SemiBold", 0, 13)); // NOI18N
         btnCollegesPrev.setForeground(new java.awt.Color(255, 255, 255));
         btnCollegesPrev.setText("<");
@@ -1094,11 +1102,11 @@ public class GUI extends javax.swing.JFrame {
 
         lblCollegesPage.setBackground(new java.awt.Color(232, 79, 39));
         lblCollegesPage.setFont(new java.awt.Font("Syne", 0, 14)); // NOI18N
-        lblCollegesPage.setForeground(new java.awt.Color(232, 79, 39));
+        lblCollegesPage.setForeground(new java.awt.Color(26, 26, 46));
         lblCollegesPage.setText("Page 1");
         jPanel8.add(lblCollegesPage, new org.netbeans.lib.awtextra.AbsoluteConstraints(1070, 670, 80, 20));
 
-        btnCollegesNext.setBackground(new java.awt.Color(232, 79, 39));
+        btnCollegesNext.setBackground(new java.awt.Color(26, 26, 46));
         btnCollegesNext.setFont(new java.awt.Font("Syne SemiBold", 0, 13)); // NOI18N
         btnCollegesNext.setForeground(new java.awt.Color(255, 255, 255));
         btnCollegesNext.setText(">");
@@ -1111,7 +1119,7 @@ public class GUI extends javax.swing.JFrame {
 
         lblCollegesShowing.setBackground(new java.awt.Color(232, 79, 39));
         lblCollegesShowing.setFont(new java.awt.Font("Syne", 0, 14)); // NOI18N
-        lblCollegesShowing.setForeground(new java.awt.Color(232, 79, 39));
+        lblCollegesShowing.setForeground(new java.awt.Color(26, 26, 46));
         lblCollegesShowing.setText("Showing X out of Y entries");
         jPanel8.add(lblCollegesShowing, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 670, 170, 20));
 
@@ -1126,11 +1134,12 @@ public class GUI extends javax.swing.JFrame {
                 "College Code", "College Name", "Actions"
             }
         ));
+        tblColleges.setOpaque(false);
         scrColleges.setViewportView(tblColleges);
 
         jPanel8.add(scrColleges, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 130, 1180, 540));
 
-        roundedPanel4.setBackground(new java.awt.Color(230, 230, 234));
+        roundedPanel4.setBackground(new java.awt.Color(240, 238, 233));
         roundedPanel4.setRoundBottomLeft(30);
         roundedPanel4.setRoundBottomRight(30);
         roundedPanel4.setRoundTopLeft(30);
@@ -1138,7 +1147,7 @@ public class GUI extends javax.swing.JFrame {
 
         jLabel7.setFont(new java.awt.Font("Inter", 1, 18)); // NOI18N
         jLabel7.setForeground(new java.awt.Color(26, 26, 46));
-        jLabel7.setText("Colleges");
+        jLabel7.setText("Colleges -");
         jLabel7.setVerticalAlignment(javax.swing.SwingConstants.TOP);
 
         jTextField3.setColumns(15);
@@ -1153,7 +1162,7 @@ public class GUI extends javax.swing.JFrame {
         jTextField3.setPreferredSize(new java.awt.Dimension(179, 30));
         jTextField3.addActionListener(this::jTextField3ActionPerformed);
 
-        jButton6.setBackground(new java.awt.Color(232, 79, 39));
+        jButton6.setBackground(new java.awt.Color(26, 26, 46));
         jButton6.setFont(new java.awt.Font("Syne SemiBold", 0, 13)); // NOI18N
         jButton6.setForeground(new java.awt.Color(255, 255, 255));
         jButton6.setText("+ Add College");
@@ -1164,41 +1173,37 @@ public class GUI extends javax.swing.JFrame {
 
         jLabel8.setBackground(new java.awt.Color(232, 79, 39));
         jLabel8.setFont(new java.awt.Font("Syne", 1, 18)); // NOI18N
-        jLabel8.setForeground(new java.awt.Color(232, 79, 39));
+        jLabel8.setForeground(new java.awt.Color(26, 26, 46));
         jLabel8.setText("(0)");
 
         javax.swing.GroupLayout roundedPanel4Layout = new javax.swing.GroupLayout(roundedPanel4);
         roundedPanel4.setLayout(roundedPanel4Layout);
         roundedPanel4Layout.setHorizontalGroup(
             roundedPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(roundedPanel4Layout.createSequentialGroup()
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, roundedPanel4Layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(roundedPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING, false)
+                .addGroup(roundedPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addComponent(jTextField3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addGroup(roundedPanel4Layout.createSequentialGroup()
-                        .addComponent(jLabel7, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel7)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jLabel8, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(850, 850, 850)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 844, Short.MAX_VALUE)
                         .addComponent(jButton6, javax.swing.GroupLayout.PREFERRED_SIZE, 140, javax.swing.GroupLayout.PREFERRED_SIZE)))
-                .addGap(18, 18, 18))
+                .addGap(16, 16, 16))
         );
         roundedPanel4Layout.setVerticalGroup(
             roundedPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(roundedPanel4Layout.createSequentialGroup()
+                .addContainerGap(12, Short.MAX_VALUE)
                 .addGroup(roundedPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(roundedPanel4Layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(jButton6, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE)
-                        .addGap(0, 0, Short.MAX_VALUE))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, roundedPanel4Layout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addGroup(roundedPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                            .addComponent(jLabel7)
-                            .addComponent(jLabel8))))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, roundedPanel4Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                        .addComponent(jLabel7)
+                        .addComponent(jLabel8))
+                    .addComponent(jButton6, javax.swing.GroupLayout.Alignment.TRAILING, javax.swing.GroupLayout.PREFERRED_SIZE, 30, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(18, 18, 18)
                 .addComponent(jTextField3, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(16, 16, 16))
+                .addGap(10, 10, 10))
         );
 
         jPanel8.add(roundedPanel4, new org.netbeans.lib.awtextra.AbsoluteConstraints(20, 10, 1180, 100));
@@ -1206,7 +1211,7 @@ public class GUI extends javax.swing.JFrame {
         getContentPane().add(jPanel8);
         jPanel8.setBounds(0, 160, 1230, 820);
 
-        jPanel6.setBackground(new java.awt.Color(255, 255, 255));
+        jPanel6.setBackground(new java.awt.Color(240, 238, 233));
         jPanel6.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 18, 8, 18));
         jPanel6.setForeground(new java.awt.Color(255, 255, 255));
         jPanel6.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -1215,7 +1220,7 @@ public class GUI extends javax.swing.JFrame {
         jPanel6.setPreferredSize(new java.awt.Dimension(1760, 1080));
         jPanel6.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        btnProgramsPrev.setBackground(new java.awt.Color(232, 79, 39));
+        btnProgramsPrev.setBackground(new java.awt.Color(26, 26, 46));
         btnProgramsPrev.setFont(new java.awt.Font("Syne SemiBold", 0, 13)); // NOI18N
         btnProgramsPrev.setForeground(new java.awt.Color(255, 255, 255));
         btnProgramsPrev.setText("<");
@@ -1227,11 +1232,11 @@ public class GUI extends javax.swing.JFrame {
 
         lblProgramsPage.setBackground(new java.awt.Color(232, 79, 39));
         lblProgramsPage.setFont(new java.awt.Font("Syne", 0, 14)); // NOI18N
-        lblProgramsPage.setForeground(new java.awt.Color(232, 79, 39));
+        lblProgramsPage.setForeground(new java.awt.Color(26, 26, 46));
         lblProgramsPage.setText("Page 1");
         jPanel6.add(lblProgramsPage, new org.netbeans.lib.awtextra.AbsoluteConstraints(1070, 670, 80, 20));
 
-        btnProgramsNext.setBackground(new java.awt.Color(232, 79, 39));
+        btnProgramsNext.setBackground(new java.awt.Color(26, 26, 46));
         btnProgramsNext.setFont(new java.awt.Font("Syne SemiBold", 0, 13)); // NOI18N
         btnProgramsNext.setForeground(new java.awt.Color(255, 255, 255));
         btnProgramsNext.setText(">");
@@ -1244,11 +1249,11 @@ public class GUI extends javax.swing.JFrame {
 
         lblProgramsShowing.setBackground(new java.awt.Color(232, 79, 39));
         lblProgramsShowing.setFont(new java.awt.Font("Syne", 0, 14)); // NOI18N
-        lblProgramsShowing.setForeground(new java.awt.Color(232, 79, 39));
+        lblProgramsShowing.setForeground(new java.awt.Color(26, 26, 46));
         lblProgramsShowing.setText("Showing X out of Y entries");
         jPanel6.add(lblProgramsShowing, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 670, 170, 20));
 
-        roundedPanel3.setBackground(new java.awt.Color(230, 230, 234));
+        roundedPanel3.setBackground(new java.awt.Color(240, 238, 233));
         roundedPanel3.setRoundBottomLeft(30);
         roundedPanel3.setRoundBottomRight(30);
         roundedPanel3.setRoundTopLeft(30);
@@ -1256,12 +1261,12 @@ public class GUI extends javax.swing.JFrame {
 
         jLabel3.setBackground(new java.awt.Color(232, 79, 39));
         jLabel3.setFont(new java.awt.Font("Syne", 1, 18)); // NOI18N
-        jLabel3.setForeground(new java.awt.Color(232, 79, 39));
+        jLabel3.setForeground(new java.awt.Color(26, 26, 46));
         jLabel3.setText("(0)");
 
         jLabel5.setFont(new java.awt.Font("Inter", 1, 18)); // NOI18N
         jLabel5.setForeground(new java.awt.Color(26, 26, 46));
-        jLabel5.setText("Programs");
+        jLabel5.setText("Programs -");
         jLabel5.setVerticalAlignment(javax.swing.SwingConstants.TOP);
 
         jTextField2.setColumns(15);
@@ -1279,7 +1284,7 @@ public class GUI extends javax.swing.JFrame {
         jComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Search in: Code", "Search in: Name", "Search in: College" }));
         jComboBox3.addActionListener(this::jComboBox3ActionPerformed);
 
-        jButton5.setBackground(new java.awt.Color(232, 79, 39));
+        jButton5.setBackground(new java.awt.Color(26, 26, 46));
         jButton5.setFont(new java.awt.Font("Syne SemiBold", 0, 13)); // NOI18N
         jButton5.setForeground(new java.awt.Color(255, 255, 255));
         jButton5.setText("+ Add Program");
@@ -1300,7 +1305,7 @@ public class GUI extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jComboBox3, 0, 581, Short.MAX_VALUE))
                     .addGroup(roundedPanel3Layout.createSequentialGroup()
-                        .addComponent(jLabel5)
+                        .addComponent(jLabel5, javax.swing.GroupLayout.PREFERRED_SIZE, 98, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jLabel3, javax.swing.GroupLayout.PREFERRED_SIZE, 80, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
@@ -1354,7 +1359,7 @@ public class GUI extends javax.swing.JFrame {
         getContentPane().add(jPanel6);
         jPanel6.setBounds(0, 160, 1230, 820);
 
-        jPanel2.setBackground(new java.awt.Color(255, 255, 255));
+        jPanel2.setBackground(new java.awt.Color(240, 238, 233));
         jPanel2.setBorder(javax.swing.BorderFactory.createEmptyBorder(8, 18, 8, 18));
         jPanel2.setForeground(new java.awt.Color(255, 255, 255));
         jPanel2.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -1363,7 +1368,7 @@ public class GUI extends javax.swing.JFrame {
         jPanel2.setPreferredSize(new java.awt.Dimension(1760, 1080));
         jPanel2.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        btnStudentsNext.setBackground(new java.awt.Color(232, 79, 39));
+        btnStudentsNext.setBackground(new java.awt.Color(26, 26, 46));
         btnStudentsNext.setFont(new java.awt.Font("Syne SemiBold", 0, 10)); // NOI18N
         btnStudentsNext.setForeground(new java.awt.Color(255, 255, 255));
         btnStudentsNext.setText(">");
@@ -1376,17 +1381,17 @@ public class GUI extends javax.swing.JFrame {
 
         lblStudentsShowing.setBackground(new java.awt.Color(232, 79, 39));
         lblStudentsShowing.setFont(new java.awt.Font("Syne", 0, 14)); // NOI18N
-        lblStudentsShowing.setForeground(new java.awt.Color(232, 79, 39));
+        lblStudentsShowing.setForeground(new java.awt.Color(26, 26, 46));
         lblStudentsShowing.setText("Showing X out of Y entries");
         jPanel2.add(lblStudentsShowing, new org.netbeans.lib.awtextra.AbsoluteConstraints(40, 670, 270, 20));
 
         lblStudentsPage.setBackground(new java.awt.Color(232, 79, 39));
         lblStudentsPage.setFont(new java.awt.Font("Syne", 0, 14)); // NOI18N
-        lblStudentsPage.setForeground(new java.awt.Color(232, 79, 39));
+        lblStudentsPage.setForeground(new java.awt.Color(26, 26, 46));
         lblStudentsPage.setText("Page 1");
         jPanel2.add(lblStudentsPage, new org.netbeans.lib.awtextra.AbsoluteConstraints(1070, 670, 90, 20));
 
-        btnStudentsPrev.setBackground(new java.awt.Color(232, 79, 39));
+        btnStudentsPrev.setBackground(new java.awt.Color(26, 26, 46));
         btnStudentsPrev.setFont(new java.awt.Font("Syne SemiBold", 0, 10)); // NOI18N
         btnStudentsPrev.setForeground(new java.awt.Color(255, 255, 255));
         btnStudentsPrev.setText("<");
@@ -1395,7 +1400,7 @@ public class GUI extends javax.swing.JFrame {
         btnStudentsPrev.addActionListener(this::btnStudentsPrevActionPerformed);
         jPanel2.add(btnStudentsPrev, new org.netbeans.lib.awtextra.AbsoluteConstraints(1020, 670, 30, 20));
 
-        roundedPanel2.setBackground(new java.awt.Color(230, 230, 234));
+        roundedPanel2.setBackground(new java.awt.Color(240, 238, 233));
         roundedPanel2.setRoundBottomLeft(30);
         roundedPanel2.setRoundBottomRight(30);
         roundedPanel2.setRoundTopLeft(30);
@@ -1413,12 +1418,12 @@ public class GUI extends javax.swing.JFrame {
 
         jLabel4.setFont(new java.awt.Font("Inter", 1, 18)); // NOI18N
         jLabel4.setForeground(new java.awt.Color(26, 26, 46));
-        jLabel4.setText("Students");
+        jLabel4.setText("Students -");
         jLabel4.setVerticalAlignment(javax.swing.SwingConstants.TOP);
 
         jLabel2.setBackground(new java.awt.Color(232, 79, 39));
         jLabel2.setFont(new java.awt.Font("Syne", 1, 18)); // NOI18N
-        jLabel2.setForeground(new java.awt.Color(232, 79, 39));
+        jLabel2.setForeground(new java.awt.Color(26, 26, 46));
         jLabel2.setText("(0)");
 
         jComboBox2.setFont(new java.awt.Font("Syne", 0, 13)); // NOI18N
@@ -1436,7 +1441,7 @@ public class GUI extends javax.swing.JFrame {
         jComboBox5.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Search in: ID", "Search in: First Name", "Search in: Last Name", "Search in: Program", "Search in: Year", "Search in: Gender" }));
         jComboBox5.addActionListener(this::jComboBox5ActionPerformed);
 
-        jButton7.setBackground(new java.awt.Color(232, 79, 39));
+        jButton7.setBackground(new java.awt.Color(26, 26, 46));
         jButton7.setFont(new java.awt.Font("Inter", 0, 13)); // NOI18N
         jButton7.setForeground(new java.awt.Color(255, 255, 255));
         jButton7.setText("+ Add Student");
@@ -1461,7 +1466,7 @@ public class GUI extends javax.swing.JFrame {
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 42, Short.MAX_VALUE)
                         .addComponent(jComboBox5, javax.swing.GroupLayout.PREFERRED_SIZE, 260, javax.swing.GroupLayout.PREFERRED_SIZE))
                     .addGroup(roundedPanel2Layout.createSequentialGroup()
-                        .addComponent(jLabel4, javax.swing.GroupLayout.PREFERRED_SIZE, 86, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addComponent(jLabel4)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                         .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 219, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)

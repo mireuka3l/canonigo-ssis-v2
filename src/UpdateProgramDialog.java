@@ -94,7 +94,7 @@ public class UpdateProgramDialog extends javax.swing.JDialog {
         jPanel2.setBackground(new java.awt.Color(240, 238, 233));
         jPanel2.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        jButton3.setBackground(new java.awt.Color(232, 79, 39));
+        jButton3.setBackground(new java.awt.Color(26, 26, 46));
         jButton3.setFont(new java.awt.Font("Syne", 0, 13)); // NOI18N
         jButton3.setForeground(new java.awt.Color(255, 255, 255));
         jButton3.setText("Save");
@@ -122,7 +122,7 @@ public class UpdateProgramDialog extends javax.swing.JDialog {
         });
         jPanel2.add(jButton1, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 210, 90, 31));
 
-        jLabel7.setFont(new java.awt.Font("Syne ExtraBold", 0, 18)); // NOI18N
+        jLabel7.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
         jLabel7.setForeground(new java.awt.Color(26, 26, 46));
         jLabel7.setText("Update Program");
         jPanel2.add(jLabel7, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 20, -1, -1));

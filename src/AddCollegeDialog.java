@@ -77,7 +77,7 @@ public class AddCollegeDialog extends javax.swing.JDialog {
         });
         jPanel1.add(jTextField3, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 80, 278, 37));
 
-        jLabel7.setFont(new java.awt.Font("Syne ExtraBold", 0, 18)); // NOI18N
+        jLabel7.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
         jLabel7.setForeground(new java.awt.Color(26, 26, 46));
         jLabel7.setText("Add College");
         jLabel7.setToolTipText("");
@@ -97,7 +97,7 @@ public class AddCollegeDialog extends javax.swing.JDialog {
         });
         jPanel1.add(jButton1, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 210, 90, 31));
 
-        jButton3.setBackground(new java.awt.Color(232, 79, 39));
+        jButton3.setBackground(new java.awt.Color(26, 26, 46));
         jButton3.setFont(new java.awt.Font("Syne", 0, 13)); // NOI18N
         jButton3.setForeground(new java.awt.Color(255, 255, 255));
         jButton3.setText("Save");

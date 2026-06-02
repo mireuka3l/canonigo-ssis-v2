@@ -522,6 +522,30 @@ public class SqliteDb {
         }
         return list;
     }
+    
+    public static int studentCount() throws SQLException {
+        try (Connection conn = connect();
+             PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM student")) {
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
+    public static int programCount() throws SQLException {
+        try (Connection conn = connect();
+             PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM program")) {
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
+    public static int collegeCount() throws SQLException {
+        try (Connection conn = connect();
+             PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM college")) {
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
 
     
     public static int studentCountFiltered(String nameQuery, String program, String college, String year) throws SQLException {

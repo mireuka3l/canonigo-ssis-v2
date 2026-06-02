@@ -139,7 +139,7 @@ public class AddStudentDialog extends javax.swing.JDialog {
         jPanel1.setBackground(new java.awt.Color(240, 238, 233));
         jPanel1.setLayout(new org.netbeans.lib.awtextra.AbsoluteLayout());
 
-        jButton3.setBackground(new java.awt.Color(232, 79, 39));
+        jButton3.setBackground(new java.awt.Color(26, 26, 46));
         jButton3.setFont(new java.awt.Font("Syne", 0, 13)); // NOI18N
         jButton3.setForeground(new java.awt.Color(255, 255, 255));
         jButton3.setText("Save");
@@ -167,7 +167,7 @@ public class AddStudentDialog extends javax.swing.JDialog {
         });
         jPanel1.add(jButton1, new org.netbeans.lib.awtextra.AbsoluteConstraints(60, 350, 90, 31));
 
-        jLabel7.setFont(new java.awt.Font("Syne ExtraBold", 0, 18)); // NOI18N
+        jLabel7.setFont(new java.awt.Font("Tahoma", 1, 24)); // NOI18N
         jLabel7.setForeground(new java.awt.Color(26, 26, 46));
         jLabel7.setText("Add Student");
         jPanel1.add(jLabel7, new org.netbeans.lib.awtextra.AbsoluteConstraints(30, 20, -1, -1));
@@ -187,7 +187,7 @@ public class AddStudentDialog extends javax.swing.JDialog {
         jComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Female", "Male", "Other" }));
         jPanel1.add(jComboBox3, new org.netbeans.lib.awtextra.AbsoluteConstraints(180, 290, 130, 36));
 
-        jComboBox2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "1", "2", "3", "4" }));
+        jComboBox2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "1", "2", "3", "4", "5" }));
         jComboBox2.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 jComboBox2ActionPerformed(evt);
@@ -297,9 +297,10 @@ public class AddStudentDialog extends javax.swing.JDialog {
         }
 
         int idYear = Integer.parseInt(id.substring(0, 4));
-        if (idYear < 2010 || idYear > 2026) {
+        int currentYear = java.time.Year.now().getValue();
+        if (idYear < 2010 || idYear > currentYear + 1) {
             javax.swing.JOptionPane.showMessageDialog(this,
-                "ID year must be between 2010 and 2026.", "Error",
+                "ID year must be between 2010 and " + (currentYear + 1) + ".", "Error",
                 javax.swing.JOptionPane.ERROR_MESSAGE);
             return;
         }

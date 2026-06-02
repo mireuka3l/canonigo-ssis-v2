@@ -51,7 +51,7 @@ public class RoundedPanel extends JPanel {
     private int roundBottomRight = 0;
 
     public RoundedPanel() {
-        setOpaque(false);
+        setOpaque(true);
     }
 
     @Override

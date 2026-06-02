@@ -3,9 +3,13 @@
     <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
     <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
         <group>
-            <file>file:/C:/Users/Administrator/Downloads/dapni123123-main/src/GUI.java</file>
-            <file>file:/C:/Users/Administrator/Downloads/dapni123123-main/src/SqliteDb.java</file>
-            <file>file:/C:/Users/Administrator/Downloads/dapni123123-main/src/FakerSeeder.java</file>
+            <file>file:/C:/Users/reyvi/Music/canonigo-ssis-v2-main/canonigo-ssis-v2-main/src/GUI.java</file>
+            <file>file:/C:/Users/reyvi/Music/canonigo-ssis-v2-main/canonigo-ssis-v2-main/src/AddStudentDialog.java</file>
+            <file>file:/C:/Users/reyvi/Music/canonigo-ssis-v2-main/canonigo-ssis-v2-main/src/UpdateStudentDialog.java</file>
+            <file>file:/C:/Users/reyvi/Music/canonigo-ssis-v2-main/canonigo-ssis-v2-main/src/UpdateProgramDialog.java</file>
+            <file>file:/C:/Users/reyvi/Music/canonigo-ssis-v2-main/canonigo-ssis-v2-main/src/UpdateCollegeDialog.java</file>
+            <file>file:/C:/Users/reyvi/Music/canonigo-ssis-v2-main/canonigo-ssis-v2-main/src/AddCollegeDialog.java</file>
+            <file>file:/C:/Users/reyvi/Music/canonigo-ssis-v2-main/canonigo-ssis-v2-main/src/AddProgramDialog.java</file>
         </group>
     </open-files>
 </project-private>
