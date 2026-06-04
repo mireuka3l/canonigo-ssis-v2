@@ -71,6 +71,7 @@ public class GUI extends javax.swing.JFrame {
         initFilters();
         reloadAllTables();
         setupActionsColumn();
+        initResponsiveLayouts();
         
         tblStudents.getColumnModel().getColumn(0).setPreferredWidth(15);
         tblStudents.getColumnModel().getColumn(1).setPreferredWidth(10);
@@ -134,9 +135,15 @@ public class GUI extends javax.swing.JFrame {
         jPanel8.setVisible(false);
 
         
-        setSize(1230, 900);
-        setResizable(false);
-        setLocationRelativeTo(null);
+        setResizable(true);
+        addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentResized(java.awt.event.ComponentEvent e) {
+                resizePanels();
+            }
+        });
+        setExtendedState(javax.swing.JFrame.MAXIMIZED_BOTH);
+
 
         // hover and click effects
         javax.swing.JButton[] all = {jButton1, jButton2, jButton3};
@@ -781,6 +788,65 @@ public class GUI extends javax.swing.JFrame {
             }
         });
     }
+    
+    private void resizePanels() {
+        int w = getContentPane().getWidth();
+        int h = getContentPane().getHeight();
+        if (w == 0 || h == 0) return;
+
+        int headerH  = 160;
+        int contentH = h - headerH;
+        int innerW   = w - 40;
+
+        // Main panels
+        jPanel3.setBounds(0, 0,       w, headerH);
+        jPanel2.setBounds(0, headerH, w, contentH);
+        jPanel6.setBounds(0, headerH, w, contentH);
+        jPanel8.setBounds(0, headerH, w, contentH);
+
+        // Rounded filter panels
+        roundedPanel2.setBounds(20, 10, innerW, 100);
+        roundedPanel3.setBounds(20, 10, innerW, 100);
+        roundedPanel4.setBounds(20, 10, innerW, 100);
+        layoutRoundedPanels(innerW);
+        roundedPanel2.revalidate(); roundedPanel2.repaint();
+        roundedPanel3.revalidate(); roundedPanel3.repaint();
+        roundedPanel4.revalidate(); roundedPanel4.repaint();
+
+        // Scroll panes — set correct width now; height set by updatePaginationPosition
+        int defH = 520;
+        scrStudents.setBounds(20, 130, innerW, scrStudents.getHeight() > 40 ? scrStudents.getHeight() : defH);
+        scrPrograms.setBounds(20, 130, innerW, scrPrograms.getHeight() > 40 ? scrPrograms.getHeight() : defH);
+        scrColleges.setBounds(20, 130, innerW, scrColleges.getHeight() > 40 ? scrColleges.getHeight() : defH);
+
+        // Render pages — this sets scroll pane HEIGHT and pagination Y positions
+        renderStudentPage();
+        renderProgramPage();
+        renderCollegePage();
+
+        // Fix pagination X positions AFTER render (render uses getX() to preserve X,
+        // but initial X values are wrong until we explicitly correct them here)
+        int showingX = 40;
+        int prevX    = w - 210;
+        int pageX    = w - 170;
+        int nextX    = w - 70;
+
+        lblStudentsShowing.setLocation(showingX, lblStudentsShowing.getY());
+        btnStudentsPrev   .setLocation(prevX,    btnStudentsPrev.getY());
+        lblStudentsPage   .setLocation(pageX,    lblStudentsPage.getY());
+        btnStudentsNext   .setLocation(nextX,    btnStudentsNext.getY());
+
+        lblProgramsShowing.setLocation(showingX, lblProgramsShowing.getY());
+        btnProgramsPrev   .setLocation(prevX,    btnProgramsPrev.getY());
+        lblProgramsPage   .setLocation(pageX,    lblProgramsPage.getY());
+        btnProgramsNext   .setLocation(nextX,    btnProgramsNext.getY());
+
+        lblCollegesShowing.setLocation(showingX, lblCollegesShowing.getY());
+        btnCollegesPrev   .setLocation(prevX,    btnCollegesPrev.getY());
+        lblCollegesPage   .setLocation(pageX,    lblCollegesPage.getY());
+        btnCollegesNext   .setLocation(nextX,    btnCollegesNext.getY());
+        javax.swing.SwingUtilities.invokeLater(this::resizePanels);
+    }
 
     
     private void updatePaginationPosition(
@@ -904,6 +970,53 @@ public class GUI extends javax.swing.JFrame {
             jLabel8.setText(SqliteDb.collegeCount() + " total");
         } catch (java.sql.SQLException e) { e.printStackTrace(); }
     }
+    
+    private void initResponsiveLayouts() {
+        jPanel2.setLayout(null);
+        jPanel6.setLayout(null);
+        jPanel8.setLayout(null);
+        
+        roundedPanel2.setLayout(null);
+        roundedPanel3.setLayout(null);
+        roundedPanel4.setLayout(null);
+
+        tblStudents.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
+        tblPrograms.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
+        tblColleges.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
+    }
+
+    private void layoutRoundedPanels(int innerW) {
+        int pw   = innerW - 16; // usable width inside each panel
+        int topY = 12, filterY = 58, rowH = 30;
+
+        // ── Students ─────────────────────────────────────────────────────────
+        jLabel4.setBounds(6, topY + 4, 90, 22);
+        jLabel2.setBounds(100, topY + 4, 200, 22);
+        jButton7.setBounds(pw - 133, topY, 140, rowH);
+
+        int fw4 = Math.max(60, (pw - 3 * 8) / 4); // 4 equal fields, 8px gaps
+        jTextField1.setBounds(6,                 filterY, fw4, rowH);
+        jComboBox2 .setBounds(6 + fw4 + 8,       filterY, fw4, rowH);
+        jComboBox6 .setBounds(6 + 2*(fw4 + 8),   filterY, fw4, rowH);
+        jComboBox5 .setBounds(6 + 3*(fw4 + 8),   filterY, fw4, rowH);
+
+        // ── Programs ──────────────────────────────────────────────────────────
+        jLabel5.setBounds(6, topY + 4, 100, 22);
+        jLabel3.setBounds(110, topY + 4, 80, 22);
+        jButton5.setBounds(pw - 133, topY, 140, rowH);
+
+        int fw2 = Math.max(80, (pw - 8) / 2);     // 2 equal fields, 8px gap
+        jTextField2.setBounds(6,          filterY, fw2, rowH);
+        jComboBox3 .setBounds(6 + fw2 + 8, filterY, fw2, rowH);
+
+        // ── Colleges ──────────────────────────────────────────────────────────
+        jLabel7.setBounds(6, topY + 4, 100, 22);
+        jLabel8.setBounds(110, topY + 4, 80, 22);
+        jButton6.setBounds(pw - 133, topY, 140, rowH);
+        jTextField3.setBounds(6, filterY, pw - 6, rowH);
+    }
+    
+    
     
     /**
      * This method is called from within the constructor to initialize the form.
