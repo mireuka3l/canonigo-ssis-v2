@@ -7,13 +7,13 @@ public class GUI extends javax.swing.JFrame {
 
     // ── Filter state (one search bar + one searchField per tab) ───────────────
     private String studentNameQuery  = "";
-    private String studentSearchField = "firstname";   // DB column to match against
+    private String studentSearchField = "all";   // DB column to match against
 
     private String programNameQuery  = "";
-    private String programSearchField = "name";
+    private String programSearchField = "all";
 
     private String collegeNameQuery  = "";
-    private String collegeSearchField = "name";
+    private String collegeSearchField = "all";
 
     // ── Pagination state ──────────────────────────────────────────────────────
     private int currentStudentPage = 1;
@@ -45,6 +45,11 @@ public class GUI extends javax.swing.JFrame {
     // ── Programmatically-added college "Search by" combo ─────────────────────
     private javax.swing.JComboBox<String> collegeSearchCombo;
 
+    // ── "Search by:" labels (one per tab, added programmatically) ────────────
+    private javax.swing.JLabel studentSearchByLabel;
+    private javax.swing.JLabel programSearchByLabel;
+    private javax.swing.JLabel collegeSearchByLabel;
+
     // ─────────────────────────────────────────────────────────────────────────
     public GUI() {
         // Load custom fonts
@@ -73,6 +78,14 @@ public class GUI extends javax.swing.JFrame {
         collegeSearchCombo = new javax.swing.JComboBox<>();
         collegeSearchCombo.addActionListener(evt -> applyCollegeFiltersAndRefresh());
         roundedPanel4.add(collegeSearchCombo);
+
+        // ── "Search by:" labels (one per tab) ─────────────────────────────────
+        studentSearchByLabel = makeSearchByLabel();
+        programSearchByLabel = makeSearchByLabel();
+        collegeSearchByLabel = makeSearchByLabel();
+        roundedPanel2.add(studentSearchByLabel);
+        roundedPanel3.add(programSearchByLabel);
+        roundedPanel4.add(collegeSearchByLabel);
 
         initFilters();
         reloadAllTables();
@@ -145,6 +158,14 @@ public class GUI extends javax.swing.JFrame {
         setupPlaceholder(jTextField1, "Search students...");
         setupPlaceholder(jTextField2, "Search programs...");
         setupPlaceholder(jTextField3, "Search colleges...");
+    }
+
+    // ── "Search by:" label factory ────────────────────────────────────────────
+    private javax.swing.JLabel makeSearchByLabel() {
+        javax.swing.JLabel lbl = new javax.swing.JLabel("Search by:");
+        lbl.setFont(new java.awt.Font("Syne", java.awt.Font.PLAIN, 13));
+        lbl.setForeground(C_TEXT);
+        return lbl;
     }
 
     // ── Active-tab indicator ──────────────────────────────────────────────────
@@ -348,31 +369,32 @@ public class GUI extends javax.swing.JFrame {
     // ── Filters ───────────────────────────────────────────────────────────────
     /**
      * Populates each tab's "Search by" dropdown.
-     * No longer reads from the DB — these are static field lists.
+     * "All" is always the first / default option — it searches across every field.
      */
     private void initFilters() {
-        // ── Students: repurpose jComboBox2 as "Search by" selector ───────────
+        // ── Students ──────────────────────────────────────────────────────────
         jComboBox2.removeAllItems();
-        for (String s : new String[]{"First Name","Last Name","ID","Program","College","Year","Gender"})
+        for (String s : new String[]{"All", "First Name", "Last Name", "ID",
+                                     "Program", "College", "Year", "Gender"})
             jComboBox2.addItem(s);
-        jComboBox2.setSelectedItem("First Name");
+        jComboBox2.setSelectedItem("All");
 
         // Hide the old extra filter combos — they are no longer used
         jComboBox5.setVisible(false);
         jComboBox6.setVisible(false);
 
-        // ── Programs: repurpose jComboBox3 as "Search by" selector ───────────
+        // ── Programs ──────────────────────────────────────────────────────────
         jComboBox3.removeAllItems();
-        for (String s : new String[]{"Name","Code","College"})
+        for (String s : new String[]{"All", "Name", "Code", "College"})
             jComboBox3.addItem(s);
-        jComboBox3.setSelectedItem("Name");
+        jComboBox3.setSelectedItem("All");
 
-        // ── Colleges: populate the programmatically-added combo ───────────────
+        // ── Colleges ──────────────────────────────────────────────────────────
         if (collegeSearchCombo != null) {
             collegeSearchCombo.removeAllItems();
-            for (String s : new String[]{"Name","Code"})
+            for (String s : new String[]{"All", "Name", "Code"})
                 collegeSearchCombo.addItem(s);
-            collegeSearchCombo.setSelectedItem("Name");
+            collegeSearchCombo.setSelectedItem("All");
             fixComboBox(collegeSearchCombo);
         }
 
@@ -383,6 +405,7 @@ public class GUI extends javax.swing.JFrame {
     // ── Translators: UI label → DB field name ─────────────────────────────────
     private String studentFieldFromLabel(String label) {
         return switch (label == null ? "" : label) {
+            case "All"        -> "all";
             case "ID"         -> "id";
             case "Last Name"  -> "lastname";
             case "Program"    -> "program_code";
@@ -395,6 +418,7 @@ public class GUI extends javax.swing.JFrame {
 
     private String programFieldFromLabel(String label) {
         return switch (label == null ? "" : label) {
+            case "All"     -> "all";
             case "Code"    -> "code";
             case "College" -> "college";
             default        -> "name";           // "Name" or fallback
@@ -402,7 +426,9 @@ public class GUI extends javax.swing.JFrame {
     }
 
     private String collegeFieldFromLabel(String label) {
-        return "Code".equals(label) ? "code" : "name";
+        if ("All".equals(label))  return "all";
+        if ("Code".equals(label)) return "code";
+        return "name";
     }
 
     // ── Apply filters ─────────────────────────────────────────────────────────
@@ -411,7 +437,7 @@ public class GUI extends javax.swing.JFrame {
         if (studentNameQuery.equals("Search students...")) studentNameQuery = "";
 
         String label = jComboBox2.getSelectedItem() != null
-            ? jComboBox2.getSelectedItem().toString() : "First Name";
+            ? jComboBox2.getSelectedItem().toString() : "All";
         studentSearchField = studentFieldFromLabel(label);
 
         currentStudentPage = 1;
@@ -423,7 +449,7 @@ public class GUI extends javax.swing.JFrame {
         if (programNameQuery.equals("Search programs...")) programNameQuery = "";
 
         String label = jComboBox3.getSelectedItem() != null
-            ? jComboBox3.getSelectedItem().toString() : "Name";
+            ? jComboBox3.getSelectedItem().toString() : "All";
         programSearchField = programFieldFromLabel(label);
 
         currentProgramPage = 1;
@@ -435,7 +461,7 @@ public class GUI extends javax.swing.JFrame {
         if (collegeNameQuery.equals("Search colleges...")) collegeNameQuery = "";
 
         String label = (collegeSearchCombo != null && collegeSearchCombo.getSelectedItem() != null)
-            ? collegeSearchCombo.getSelectedItem().toString() : "Name";
+            ? collegeSearchCombo.getSelectedItem().toString() : "All";
         collegeSearchField = collegeFieldFromLabel(label);
 
         currentCollegePage = 1;
@@ -648,7 +674,7 @@ public class GUI extends javax.swing.JFrame {
                 String dbCol = (col >= 0 && col < dbCols.length) ? dbCols[col] : null;
                 String text  = value != null ? value.toString() : "";
                 if (dbCol != null && dbCol.equals(getSortBy.get())) {
-                    lbl.setText(text + (getSortDesc.get() ? "  ▼" : "  ▲"));
+                    lbl.setText(text + (getSortDesc.get() ? "  ↓" : "  ↑"));
                     lbl.setForeground(C_ACCENT);
                 } else {
                     lbl.setText(text);
@@ -854,29 +880,38 @@ public class GUI extends javax.swing.JFrame {
     }
 
     /**
-     * Layout: each panel now has ONE search bar + ONE "Search by" dropdown.
+     * Layout for each search panel:
      *
-     *   [ Search text field .............. ] [ Search by ▾ ] [ + Add Button ]
+     *   [ Title  (count) ]                            [ + Add Button ]
+     *   [ Search text field ......... ] Search by: [ Dropdown ▾ ]
+     *
+     * A "Search by:" label is placed between the text field and the dropdown.
      */
     private void layoutRoundedPanels(int innerW) {
         int pw      = innerW - 16;
         int topY    = 12, filterY = 58, rowH = 30;
 
-        // Split available width roughly 60 / 30 / add-button for the filter row
-        int addBtnW = 140;
-        int gap     = 8;
-        int filterW = pw - addBtnW - gap;        // total width for search + combo
-        int searchW = (int)(filterW * 0.62);     // search bar gets ~62 %
-        int comboW  = filterW - searchW - gap;   // "Search by" gets the rest
+        int addBtnW  = 140;
+        int gap      = 8;
+        int labelW   = 78;   // width of "Search by:" label
+
+        // Available width after reserving the Add button
+        int filterW  = pw - addBtnW - gap;
+        // Search bar gets ~62 % of that; label + dropdown share the rest
+        int searchW  = (int)(filterW * 0.62);
+        int comboW   = filterW - searchW - gap - labelW - gap;
+        int labelX   = 6 + searchW + gap;
+        int comboX   = labelX + labelW + gap;
 
         // ── Students panel ────────────────────────────────────────────────────
         jLabel4.setBounds(6,    topY + 4,   90,    22);
         jLabel2.setBounds(100,  topY + 4,   200,   22);
         jButton7.setBounds(pw - addBtnW,    topY,  addBtnW, rowH);
 
-        jTextField1.setBounds(6,                filterY, searchW, rowH);
-        jComboBox2 .setBounds(6 + searchW + gap, filterY, comboW,  rowH);
-        // Old filter combos are hidden
+        jTextField1.setBounds(6,       filterY, searchW, rowH);
+        studentSearchByLabel.setBounds(labelX,  filterY + 5, labelW, 20);
+        jComboBox2.setBounds(comboX,   filterY, comboW,  rowH);
+
         jComboBox5.setVisible(false);
         jComboBox6.setVisible(false);
 
@@ -885,17 +920,19 @@ public class GUI extends javax.swing.JFrame {
         jLabel3.setBounds(110,  topY + 4,   80,    22);
         jButton5.setBounds(pw - addBtnW,    topY,  addBtnW, rowH);
 
-        jTextField2.setBounds(6,                filterY, searchW, rowH);
-        jComboBox3 .setBounds(6 + searchW + gap, filterY, comboW,  rowH);
+        jTextField2.setBounds(6,       filterY, searchW, rowH);
+        programSearchByLabel.setBounds(labelX,  filterY + 5, labelW, 20);
+        jComboBox3.setBounds(comboX,   filterY, comboW,  rowH);
 
         // ── Colleges panel ────────────────────────────────────────────────────
         jLabel7.setBounds(6,    topY + 4,   100,   22);
         jLabel8.setBounds(110,  topY + 4,   80,    22);
         jButton6.setBounds(pw - addBtnW,    topY,  addBtnW, rowH);
 
-        jTextField3.setBounds(6,                filterY, searchW, rowH);
+        jTextField3.setBounds(6,       filterY, searchW, rowH);
+        collegeSearchByLabel.setBounds(labelX,  filterY + 5, labelW, 20);
         if (collegeSearchCombo != null)
-            collegeSearchCombo.setBounds(6 + searchW + gap, filterY, comboW, rowH);
+            collegeSearchCombo.setBounds(comboX, filterY, comboW, rowH);
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -1250,7 +1287,7 @@ public class GUI extends javax.swing.JFrame {
 
         jComboBox3.setFont(new java.awt.Font("Syne", 0, 13));
         jComboBox3.setForeground(new java.awt.Color(26, 26, 46));
-        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Name" }));
+        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "All" }));
         jComboBox3.addActionListener(this::jComboBox3ActionPerformed);
 
         jButton5.setBackground(new java.awt.Color(26, 26, 46));
@@ -1376,7 +1413,7 @@ public class GUI extends javax.swing.JFrame {
 
         jComboBox2.setFont(new java.awt.Font("Syne", 0, 13));
         jComboBox2.setForeground(new java.awt.Color(26, 26, 46));
-        jComboBox2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "First Name" }));
+        jComboBox2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "All" }));
         jComboBox2.addActionListener(this::jComboBox2ActionPerformed);
 
         jComboBox6.setFont(new java.awt.Font("Syne", 0, 13));

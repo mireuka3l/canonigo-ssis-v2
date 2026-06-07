@@ -511,8 +511,10 @@ public class SqliteDb {
 
     /**
      * Returns a SQL WHERE fragment for searching students.
-     * searchField values: "id", "firstname", "lastname",
+     * searchField values: "all", "id", "firstname", "lastname",
      *                     "program_code", "college_code", "year", "gender"
+     *
+     * The "all" case concatenates every column so a single LIKE covers all fields.
      */
     private static String studentSearchExpr(String searchField) {
         return switch (searchField) {
@@ -522,41 +524,46 @@ public class SqliteDb {
             case "college_code" -> "(? = '' OR p.college LIKE ?)";
             case "year"         -> "(? = '' OR CAST(s.year AS TEXT) LIKE ?)";
             case "gender"       -> "(? = '' OR s.gender LIKE ?)";
+            // "all": search across every student field in one pass
+            case "all"          ->
+                "(? = '' OR (s.id || ' ' || s.firstname || ' ' || s.lastname || ' ' || " +
+                "s.program_code || ' ' || p.college || ' ' || " +
+                "CAST(s.year AS TEXT) || ' ' || s.gender) LIKE ?)";
             default             -> "(? = '' OR s.firstname LIKE ?)"; // default: firstname
         };
     }
 
     /**
      * Returns a SQL WHERE fragment for searching programs.
-     * searchField values: "code", "name", "college"
+     * searchField values: "all", "code", "name", "college"
      */
     private static String programSearchExpr(String searchField) {
         return switch (searchField) {
             case "code"    -> "(? = '' OR code LIKE ?)";
             case "college" -> "(? = '' OR college LIKE ?)";
+            // "all": search across code, name, and college at once
+            case "all"     -> "(? = '' OR (code || ' ' || name || ' ' || college) LIKE ?)";
             default        -> "(? = '' OR name LIKE ?)"; // default: name
         };
     }
 
     /**
      * Returns a SQL WHERE fragment for searching colleges.
-     * searchField values: "code", "name"
+     * searchField values: "all", "code", "name"
      */
     private static String collegeSearchExpr(String searchField) {
-        return "code".equals(searchField)
-            ? "(? = '' OR code LIKE ?)"
-            : "(? = '' OR name LIKE ?)";  // default: name
+        return switch (searchField) {
+            case "code" -> "(? = '' OR code LIKE ?)";
+            // "all": search across both code and name at once
+            case "all"  -> "(? = '' OR (code || ' ' || name) LIKE ?)";
+            default     -> "(? = '' OR name LIKE ?)";  // default: name
+        };
     }
 
     // ═════════════════════════════════════════════════════════════════════════
     //  FILTERED COUNT + LIST  (single search bar + searchField)
     // ═════════════════════════════════════════════════════════════════════════
 
-    /**
-     * @param nameQuery   text the user typed (empty = show all)
-     * @param searchField one of: id, firstname, lastname, program_code,
-     *                    college_code, year, gender
-     */
     public static int studentCountFiltered(String nameQuery, String searchField)
             throws SQLException {
 
@@ -611,10 +618,6 @@ public class SqliteDb {
         }
     }
 
-    /**
-     * @param nameQuery   text the user typed
-     * @param searchField one of: code, name, college
-     */
     public static int programCountFiltered(String nameQuery, String searchField)
             throws SQLException {
 
@@ -652,10 +655,6 @@ public class SqliteDb {
         }
     }
 
-    /**
-     * @param nameQuery   text the user typed
-     * @param searchField one of: code, name
-     */
     public static int collegeCountFiltered(String nameQuery, String searchField)
             throws SQLException {
 
