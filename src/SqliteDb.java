@@ -14,11 +14,9 @@ public class SqliteDb {
         return conn;
     }
 
-
     public static class CollegeError extends Exception { public CollegeError(String m) { super(m); } }
     public static class ProgramError extends Exception { public ProgramError(String m) { super(m); } }
     public static class StudentError  extends Exception { public StudentError(String m)  { super(m); } }
-
 
     public static final List<String> VALID_YEARS   = Arrays.asList("1","2","3","4","5");
     public static final List<String> VALID_GENDERS = Arrays.asList("Male","Female","Other");
@@ -33,7 +31,7 @@ public class SqliteDb {
                     name TEXT NOT NULL
                 )
             """);
-          
+
             st.execute("""
                 CREATE TABLE IF NOT EXISTS program (
                     code    TEXT PRIMARY KEY,
@@ -41,7 +39,7 @@ public class SqliteDb {
                     college TEXT NOT NULL REFERENCES college(code)
                 )
             """);
-       
+
             st.execute("""
                 CREATE TABLE IF NOT EXISTS student (
                     id           TEXT PRIMARY KEY
@@ -61,14 +59,6 @@ public class SqliteDb {
     //  COLLEGE
     // ═════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Returns all colleges.
-     *
-     * @param sortBy  column name: "code" or "name"
-     * @param reverse true = DESC
-     * @param page    1-based page number
-     * @param size    rows per page (0 = no pagination)
-     */
     public static List<Map<String,String>> collegeList(
             String sortBy, boolean reverse, int page, int size)
             throws SQLException {
@@ -100,11 +90,6 @@ public class SqliteDb {
         }
     }
 
-    /**
-     * Searches colleges by a field.
-     *
-     * @param field "code" or "name"
-     */
     public static List<Map<String,String>> collegeSearch(
             String query, String field, int page, int size)
             throws SQLException {
@@ -121,7 +106,6 @@ public class SqliteDb {
         }
     }
 
-    /** Creates a new college. Throws CollegeError if code already exists. */
     public static Map<String,String> collegeCreate(String code, String name)
             throws SQLException, CollegeError {
 
@@ -146,7 +130,6 @@ public class SqliteDb {
         return Map.of("code", code, "name", name);
     }
 
-    /** Updates the name of an existing college. */
     public static Map<String,String> collegeUpdate(String code, String name)
             throws SQLException, CollegeError {
 
@@ -164,10 +147,6 @@ public class SqliteDb {
         return Map.of("code", code.toUpperCase(), "name", name);
     }
 
-    /**
-     * Deletes a college. SQLite's FK enforcement raises an error automatically
-     * if any program still references this college — no manual loop needed.
-     */
     public static void collegeDelete(String code) throws SQLException, CollegeError {
         String sql = "DELETE FROM college WHERE code = ?";
         try (Connection conn = connect();
@@ -364,10 +343,6 @@ public class SqliteDb {
         }
     }
 
-    /**
-     * Auto-generates the next YYYY-NNNN id for the current year.
-     * Uses MAX() in SQL — no full table scan needed.
-     */
     public static String nextStudentId() throws SQLException {
         int year = Year.now().getValue();
         String pattern = year + "-%";
@@ -376,12 +351,11 @@ public class SqliteDb {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, pattern);
             ResultSet rs  = ps.executeQuery();
-            int       max = rs.getInt(1); // returns 0 if no rows match
+            int       max = rs.getInt(1);
             return String.format("%d-%04d", year, max + 1);
         }
     }
 
-    /** Creates a student with a caller-supplied id. */
     public static Map<String,String> studentCreateWithId(
             String id, String firstname, String lastname,
             String programCode, String year, String gender)
@@ -394,7 +368,6 @@ public class SqliteDb {
         year        = year.trim();
         gender      = gender.trim();
 
-        // Application-level validation (mirrors CsvDb)
         if (id.isEmpty() || firstname.isEmpty() || lastname.isEmpty()
                 || programCode.isEmpty() || year.isEmpty() || gender.isEmpty())
             throw new StudentError("All fields are required.");
@@ -432,7 +405,6 @@ public class SqliteDb {
                       "program_code", programCode, "year", year, "gender", gender);
     }
 
-    /** Creates a student with an auto-generated id. */
     public static Map<String,String> studentCreate(
             String firstname, String lastname,
             String programCode, String year, String gender)
@@ -505,24 +477,9 @@ public class SqliteDb {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    //  Utility helpers
+    //  COUNT helpers
     // ═════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Converts a ResultSet into a list of maps.
-     * Columns are returned in the order given by {@code columns}.
-     */
-    private static List<Map<String,String>> toList(ResultSet rs, String... columns)
-            throws SQLException {
-        List<Map<String,String>> list = new ArrayList<>();
-        while (rs.next()) {
-            Map<String,String> row = new LinkedHashMap<>();
-            for (String col : columns) row.put(col, rs.getString(col));
-            list.add(row);
-        }
-        return list;
-    }
-    
     public static int studentCount() throws SQLException {
         try (Connection conn = connect();
              PreparedStatement ps = conn.prepareStatement("SELECT COUNT(*) FROM student")) {
@@ -547,26 +504,70 @@ public class SqliteDb {
         }
     }
 
-    
-    public static int studentCountFiltered(String nameQuery, String program, String college, String year) throws SQLException {
-        String sql =
-            "SELECT COUNT(*) " +
-            "FROM student s " +
-            "JOIN program p ON p.code = s.program_code " +
-            "WHERE (? = '' OR s.firstname LIKE ? OR s.lastname LIKE ?) " +
-            "AND (? = 'All Programs' OR s.program_code = ?) " +
-            "AND (? = 'All Colleges' OR p.college = ?) " +
-            "AND (? = 'All Year Levels' OR CAST(s.year AS TEXT) = ?)";
+    // ═════════════════════════════════════════════════════════════════════════
+    //  SEARCH EXPRESSION HELPERS
+    //  Each returns a WHERE fragment with exactly 2 bind params: (query, %query%)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Returns a SQL WHERE fragment for searching students.
+     * searchField values: "id", "firstname", "lastname",
+     *                     "program_code", "college_code", "year", "gender"
+     */
+    private static String studentSearchExpr(String searchField) {
+        return switch (searchField) {
+            case "id"           -> "(? = '' OR s.id LIKE ?)";
+            case "lastname"     -> "(? = '' OR s.lastname LIKE ?)";
+            case "program_code" -> "(? = '' OR s.program_code LIKE ?)";
+            case "college_code" -> "(? = '' OR p.college LIKE ?)";
+            case "year"         -> "(? = '' OR CAST(s.year AS TEXT) LIKE ?)";
+            case "gender"       -> "(? = '' OR s.gender LIKE ?)";
+            default             -> "(? = '' OR s.firstname LIKE ?)"; // default: firstname
+        };
+    }
+
+    /**
+     * Returns a SQL WHERE fragment for searching programs.
+     * searchField values: "code", "name", "college"
+     */
+    private static String programSearchExpr(String searchField) {
+        return switch (searchField) {
+            case "code"    -> "(? = '' OR code LIKE ?)";
+            case "college" -> "(? = '' OR college LIKE ?)";
+            default        -> "(? = '' OR name LIKE ?)"; // default: name
+        };
+    }
+
+    /**
+     * Returns a SQL WHERE fragment for searching colleges.
+     * searchField values: "code", "name"
+     */
+    private static String collegeSearchExpr(String searchField) {
+        return "code".equals(searchField)
+            ? "(? = '' OR code LIKE ?)"
+            : "(? = '' OR name LIKE ?)";  // default: name
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  FILTERED COUNT + LIST  (single search bar + searchField)
+    // ═════════════════════════════════════════════════════════════════════════
+
+    /**
+     * @param nameQuery   text the user typed (empty = show all)
+     * @param searchField one of: id, firstname, lastname, program_code,
+     *                    college_code, year, gender
+     */
+    public static int studentCountFiltered(String nameQuery, String searchField)
+            throws SQLException {
+
+        String sql = "SELECT COUNT(*) FROM student s " +
+                     "JOIN program p ON p.code = s.program_code " +
+                     "WHERE " + studentSearchExpr(searchField);
 
         try (Connection conn = connect();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nameQuery);
             ps.setString(2, "%" + nameQuery + "%");
-            ps.setString(3, "%" + nameQuery + "%");
-            ps.setString(4, program); ps.setString(5, program);
-            ps.setString(6, college); ps.setString(7, college);
-            ps.setString(8, year);    ps.setString(9, year);
-
             ResultSet rs = ps.executeQuery();
             return rs.next() ? rs.getInt(1) : 0;
         }
@@ -574,30 +575,28 @@ public class SqliteDb {
 
     public static List<Map<String,String>> studentListFiltered(
             String sortBy, boolean reverse, int page, int size,
-            String nameQuery, String program, String college, String year) throws SQLException {
+            String nameQuery, String searchField) throws SQLException {
 
-        String col = allowedColumn(sortBy, "id","firstname","lastname","program_code","college_code","year","gender");
+        String col = allowedColumn(sortBy,
+            "id","firstname","lastname","program_code","college_code","year","gender");
         String order = reverse ? "DESC" : "ASC";
 
         String orderExpr = switch (col) {
             case "college_code" -> "p.college";
-            case "id" -> "s.id";
-            case "firstname" -> "s.firstname";
-            case "lastname" -> "s.lastname";
+            case "firstname"    -> "s.firstname";
+            case "lastname"     -> "s.lastname";
             case "program_code" -> "s.program_code";
-            case "year" -> "s.year";
-            case "gender" -> "s.gender";
-            default -> "s.id";
+            case "year"         -> "s.year";
+            case "gender"       -> "s.gender";
+            default             -> "s.id";
         };
 
         String sql =
-            "SELECT s.id, s.firstname, s.lastname, s.program_code, p.college AS college_code, s.year, s.gender " +
+            "SELECT s.id, s.firstname, s.lastname, s.program_code, " +
+            "p.college AS college_code, s.year, s.gender " +
             "FROM student s " +
             "JOIN program p ON p.code = s.program_code " +
-            "WHERE (? = '' OR s.firstname LIKE ? OR s.lastname LIKE ?) " +
-            "AND (? = 'All Programs' OR s.program_code = ?) " +
-            "AND (? = 'All Colleges' OR p.college = ?) " +
-            "AND (? = 'All Year Levels' OR CAST(s.year AS TEXT) = ?) " +
+            "WHERE " + studentSearchExpr(searchField) + " " +
             "ORDER BY " + orderExpr + " " + order + " " +
             "LIMIT ? OFFSET ?";
 
@@ -605,31 +604,26 @@ public class SqliteDb {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nameQuery);
             ps.setString(2, "%" + nameQuery + "%");
-            ps.setString(3, "%" + nameQuery + "%");
-            ps.setString(4, program); ps.setString(5, program);
-            ps.setString(6, college); ps.setString(7, college);
-            ps.setString(8, year);    ps.setString(9, year);
-            ps.setInt(10, size);
-            ps.setInt(11, (page - 1) * size);
-
+            ps.setInt(3, size);
+            ps.setInt(4, (page - 1) * size);
             return toList(ps.executeQuery(),
                 "id","firstname","lastname","program_code","college_code","year","gender");
         }
     }
 
-    public static int programCountFiltered(String nameQuery, String college) throws SQLException {
-        String sql =
-            "SELECT COUNT(*) FROM program " +
-            "WHERE (? = '' OR name LIKE ?) " +
-            "AND (? = 'All Colleges' OR college = ?)";
+    /**
+     * @param nameQuery   text the user typed
+     * @param searchField one of: code, name, college
+     */
+    public static int programCountFiltered(String nameQuery, String searchField)
+            throws SQLException {
+
+        String sql = "SELECT COUNT(*) FROM program WHERE " + programSearchExpr(searchField);
 
         try (Connection conn = connect();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, nameQuery);
             ps.setString(2, "%" + nameQuery + "%");
-            ps.setString(3, college);
-            ps.setString(4, college);
-
             ResultSet rs = ps.executeQuery();
             return rs.next() ? rs.getInt(1) : 0;
         }
@@ -637,57 +631,14 @@ public class SqliteDb {
 
     public static List<Map<String,String>> programListFiltered(
             String sortBy, boolean reverse, int page, int size,
-            String nameQuery, String college) throws SQLException {
+            String nameQuery, String searchField) throws SQLException {
 
-        String col = allowedColumn(sortBy, "code","name","college");
+        String col   = allowedColumn(sortBy, "code", "name", "college");
         String order = reverse ? "DESC" : "ASC";
 
         String sql =
-            "SELECT code, name, college " +
-            "FROM program " +
-            "WHERE (? = '' OR name LIKE ?) " +
-            "AND (? = 'All Colleges' OR college = ?) " +
-            "ORDER BY " + col + " " + order + " " +
-            "LIMIT ? OFFSET ?";
-
-        try (Connection conn = connect();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nameQuery);
-            ps.setString(2, "%" + nameQuery + "%");
-            ps.setString(3, college);
-            ps.setString(4, college);
-            ps.setInt(5, size);
-            ps.setInt(6, (page - 1) * size);
-
-            return toList(ps.executeQuery(), "code","name","college");
-        }
-    }
-
-    public static int collegeCountFiltered(String nameQuery) throws SQLException {
-        String sql =
-            "SELECT COUNT(*) FROM college " +
-            "WHERE (? = '' OR name LIKE ?)";
-
-        try (Connection conn = connect();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setString(1, nameQuery);
-            ps.setString(2, "%" + nameQuery + "%");
-
-            ResultSet rs = ps.executeQuery();
-            return rs.next() ? rs.getInt(1) : 0;
-        }
-    }
-
-    public static List<Map<String,String>> collegeListFiltered(
-            String sortBy, boolean reverse, int page, int size,
-            String nameQuery) throws SQLException {
-
-        String col = allowedColumn(sortBy, "code","name");
-        String order = reverse ? "DESC" : "ASC";
-
-        String sql =
-            "SELECT code, name FROM college " +
-            "WHERE (? = '' OR name LIKE ?) " +
+            "SELECT code, name, college FROM program " +
+            "WHERE " + programSearchExpr(searchField) + " " +
             "ORDER BY " + col + " " + order + " " +
             "LIMIT ? OFFSET ?";
 
@@ -697,18 +648,71 @@ public class SqliteDb {
             ps.setString(2, "%" + nameQuery + "%");
             ps.setInt(3, size);
             ps.setInt(4, (page - 1) * size);
-
-            return toList(ps.executeQuery(), "code","name");
+            return toList(ps.executeQuery(), "code", "name", "college");
         }
     }
-    
+
+    /**
+     * @param nameQuery   text the user typed
+     * @param searchField one of: code, name
+     */
+    public static int collegeCountFiltered(String nameQuery, String searchField)
+            throws SQLException {
+
+        String sql = "SELECT COUNT(*) FROM college WHERE " + collegeSearchExpr(searchField);
+
+        try (Connection conn = connect();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, nameQuery);
+            ps.setString(2, "%" + nameQuery + "%");
+            ResultSet rs = ps.executeQuery();
+            return rs.next() ? rs.getInt(1) : 0;
+        }
+    }
+
+    public static List<Map<String,String>> collegeListFiltered(
+            String sortBy, boolean reverse, int page, int size,
+            String nameQuery, String searchField) throws SQLException {
+
+        String col   = allowedColumn(sortBy, "code", "name");
+        String order = reverse ? "DESC" : "ASC";
+
+        String sql =
+            "SELECT code, name FROM college " +
+            "WHERE " + collegeSearchExpr(searchField) + " " +
+            "ORDER BY " + col + " " + order + " " +
+            "LIMIT ? OFFSET ?";
+
+        try (Connection conn = connect();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, nameQuery);
+            ps.setString(2, "%" + nameQuery + "%");
+            ps.setInt(3, size);
+            ps.setInt(4, (page - 1) * size);
+            return toList(ps.executeQuery(), "code", "name");
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════════════════════
+    //  Utility helpers
+    // ═════════════════════════════════════════════════════════════════════════
+
+    private static List<Map<String,String>> toList(ResultSet rs, String... columns)
+            throws SQLException {
+        List<Map<String,String>> list = new ArrayList<>();
+        while (rs.next()) {
+            Map<String,String> row = new LinkedHashMap<>();
+            for (String col : columns) row.put(col, rs.getString(col));
+            list.add(row);
+        }
+        return list;
+    }
+
     private static String allowedColumn(String input, String... allowed) {
         if (input == null) return allowed[0];
         for (String a : allowed) {
             if (a.equalsIgnoreCase(input)) return a;
         }
         return allowed[0];
-    }    
+    }
 }
-
-

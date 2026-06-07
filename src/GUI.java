@@ -5,14 +5,15 @@ public class GUI extends javax.swing.JFrame {
     private String programSortBy = "code";  private boolean programSortDesc = false;
     private String collegeSortBy = "code";  private boolean collegeSortDesc = false;
 
-    // ── Filter state ──────────────────────────────────────────────────────────
-    private String studentNameQuery    = "";
-    private String studentProgramFilter = "All Programs";
-    private String studentCollegeFilter = "All Colleges";
-    private String studentYearFilter    = "All Year Levels";
-    private String programNameQuery    = "";
-    private String programCollegeFilter = "All Colleges";
-    private String collegeNameQuery    = "";
+    // ── Filter state (one search bar + one searchField per tab) ───────────────
+    private String studentNameQuery  = "";
+    private String studentSearchField = "firstname";   // DB column to match against
+
+    private String programNameQuery  = "";
+    private String programSearchField = "name";
+
+    private String collegeNameQuery  = "";
+    private String collegeSearchField = "name";
 
     // ── Pagination state ──────────────────────────────────────────────────────
     private int currentStudentPage = 1;
@@ -20,12 +21,12 @@ public class GUI extends javax.swing.JFrame {
     private int currentCollegePage = 1;
     private static final int PAGE_SIZE = 15;
 
-    // ── Hover-row tracking (NEW) ──────────────────────────────────────────────
+    // ── Hover-row tracking ────────────────────────────────────────────────────
     private int hoveredStudentRow = -1;
     private int hoveredProgramRow = -1;
     private int hoveredCollegeRow = -1;
 
-    // ── Design tokens (NEW) ───────────────────────────────────────────────────
+    // ── Design tokens ─────────────────────────────────────────────────────────
     private static final java.awt.Color C_ACCENT     = new java.awt.Color(232,  79,  39);
     private static final java.awt.Color C_NAV        = new java.awt.Color( 26,  26,  46);
     private static final java.awt.Color C_NAV_HOVER  = new java.awt.Color( 44,  44,  60);
@@ -40,6 +41,9 @@ public class GUI extends javax.swing.JFrame {
     private static final java.awt.Color C_TEXT_DIM   = new java.awt.Color(150, 150, 170);
     private static final java.awt.Color C_GREEN      = new java.awt.Color( 39, 174,  96);
     private static final java.awt.Color C_RED        = new java.awt.Color(192,  57,  43);
+
+    // ── Programmatically-added college "Search by" combo ─────────────────────
+    private javax.swing.JComboBox<String> collegeSearchCombo;
 
     // ─────────────────────────────────────────────────────────────────────────
     public GUI() {
@@ -64,10 +68,16 @@ public class GUI extends javax.swing.JFrame {
         }
 
         initComponents();
+
+        // ── College "Search by" combo (programmatic — not in .form) ──────────
+        collegeSearchCombo = new javax.swing.JComboBox<>();
+        collegeSearchCombo.addActionListener(evt -> applyCollegeFiltersAndRefresh());
+        roundedPanel4.add(collegeSearchCombo);
+
         initFilters();
         reloadAllTables();
         setupActionsColumn();
-        setupHoverListeners();          // NEW
+        setupHoverListeners();
         initResponsiveLayouts();
 
         // Column widths – students
@@ -129,18 +139,15 @@ public class GUI extends javax.swing.JFrame {
         // Navigation buttons
         javax.swing.JButton[] navBtns = {jButton1, jButton2, jButton3};
         for (javax.swing.JButton b : navBtns) styleNavButton(b, navBtns);
-        setActiveTab(jButton1);     // Students is default
+        setActiveTab(jButton1);
 
         // Search field placeholders
         setupPlaceholder(jTextField1, "Search students...");
         setupPlaceholder(jTextField2, "Search programs...");
         setupPlaceholder(jTextField3, "Search colleges...");
-
-        fixComboBox(jComboBox2);
-        fixComboBox(jComboBox3);
     }
 
-    // ── NEW: Active-tab indicator ─────────────────────────────────────────────
+    // ── Active-tab indicator ──────────────────────────────────────────────────
     private void setActiveTab(javax.swing.JButton activeBtn) {
         javax.swing.JButton[] tabs = {jButton1, jButton2, jButton3};
         for (javax.swing.JButton btn : tabs) {
@@ -155,7 +162,7 @@ public class GUI extends javax.swing.JFrame {
         }
     }
 
-    // ── NEW: Hover listeners ──────────────────────────────────────────────────
+    // ── Hover listeners ───────────────────────────────────────────────────────
     private void setupHoverListeners() {
         addHoverListener(tblStudents, r -> { hoveredStudentRow = r; tblStudents.repaint(); });
         addHoverListener(tblPrograms, r -> { hoveredProgramRow = r; tblPrograms.repaint(); });
@@ -176,7 +183,7 @@ public class GUI extends javax.swing.JFrame {
         });
     }
 
-    // ── NEW: Placeholder helper ───────────────────────────────────────────────
+    // ── Placeholder helper ────────────────────────────────────────────────────
     private void setupPlaceholder(javax.swing.JTextField field, String placeholder) {
         field.setForeground(C_TEXT_DIM);
         field.setText(placeholder);
@@ -196,7 +203,7 @@ public class GUI extends javax.swing.JFrame {
         });
     }
 
-    // ── Header sorting (unchanged logic, wired to installSortHeaderRenderer) ──
+    // ── Header sorting ────────────────────────────────────────────────────────
     private void setupHeaderSorting() {
         tblStudents.getTableHeader().addMouseListener(new java.awt.event.MouseAdapter() {
             @Override public void mouseClicked(java.awt.event.MouseEvent e) {
@@ -257,14 +264,14 @@ public class GUI extends javax.swing.JFrame {
             () -> collegeSortBy, () -> collegeSortDesc);
     }
 
-    // ── Delete / Edit callbacks (unchanged) ───────────────────────────────────
+    // ── Delete / Edit callbacks ───────────────────────────────────────────────
     private void onDeleteCollege(int row) {
         javax.swing.table.DefaultTableModel m = (javax.swing.table.DefaultTableModel) tblColleges.getModel();
         String code = String.valueOf(m.getValueAt(row, 0));
         int ok = javax.swing.JOptionPane.showConfirmDialog(this,
             "Delete college " + code + "?", "Confirm", javax.swing.JOptionPane.YES_NO_OPTION);
         if (ok == javax.swing.JOptionPane.YES_OPTION) {
-            try { SqliteDb.collegeDelete(code); initFilters(); reloadAllTables(); }
+            try { SqliteDb.collegeDelete(code); reloadAllTables(); }
             catch (Exception e) {
                 javax.swing.JOptionPane.showMessageDialog(this, e.getMessage(), "Error",
                     javax.swing.JOptionPane.ERROR_MESSAGE);
@@ -278,7 +285,7 @@ public class GUI extends javax.swing.JFrame {
         String name = String.valueOf(m.getValueAt(row, 1));
         UpdateCollegeDialog d = new UpdateCollegeDialog(this, true, code, name);
         d.setLocationRelativeTo(this); d.setVisible(true);
-        initFilters(); reloadAllTables();
+        reloadAllTables();
     }
 
     private void onDeleteProgram(int row) {
@@ -287,7 +294,7 @@ public class GUI extends javax.swing.JFrame {
         int ok = javax.swing.JOptionPane.showConfirmDialog(this,
             "Delete program " + code + "?", "Confirm", javax.swing.JOptionPane.YES_NO_OPTION);
         if (ok == javax.swing.JOptionPane.YES_OPTION) {
-            try { SqliteDb.programDelete(code); initFilters(); reloadAllTables(); }
+            try { SqliteDb.programDelete(code); reloadAllTables(); }
             catch (Exception e) {
                 javax.swing.JOptionPane.showMessageDialog(this, e.getMessage(), "Error",
                     javax.swing.JOptionPane.ERROR_MESSAGE);
@@ -308,7 +315,7 @@ public class GUI extends javax.swing.JFrame {
         } catch (java.sql.SQLException e) { e.printStackTrace(); }
         UpdateProgramDialog d = new UpdateProgramDialog(this, true, code, name, collegeCode);
         d.setLocationRelativeTo(this); d.setVisible(true);
-        initFilters(); reloadAllTables();
+        reloadAllTables();
     }
 
     private void onDeleteStudent(int row) {
@@ -317,7 +324,7 @@ public class GUI extends javax.swing.JFrame {
         int ok = javax.swing.JOptionPane.showConfirmDialog(this,
             "Delete student " + id + "?", "Confirm", javax.swing.JOptionPane.YES_NO_OPTION);
         if (ok == javax.swing.JOptionPane.YES_OPTION) {
-            try { SqliteDb.studentDelete(id); initFilters(); reloadAllTables(); }
+            try { SqliteDb.studentDelete(id); reloadAllTables(); }
             catch (Exception e) {
                 javax.swing.JOptionPane.showMessageDialog(this, e.getMessage(), "Error",
                     javax.swing.JOptionPane.ERROR_MESSAGE);
@@ -335,78 +342,118 @@ public class GUI extends javax.swing.JFrame {
         String gender = String.valueOf(m.getValueAt(row, 6));
         UpdateStudentDialog d = new UpdateStudentDialog(this, true, id, fn, ln, prog, year, gender);
         d.setLocationRelativeTo(this); d.setVisible(true);
-        initFilters(); reloadAllTables();
+        reloadAllTables();
     }
 
-    // ── Filters (unchanged) ───────────────────────────────────────────────────
+    // ── Filters ───────────────────────────────────────────────────────────────
+    /**
+     * Populates each tab's "Search by" dropdown.
+     * No longer reads from the DB — these are static field lists.
+     */
     private void initFilters() {
-        try {
-            jComboBox2.removeAllItems();
-            jComboBox2.addItem("All Programs");
-            for (java.util.Map<String,String> p : SqliteDb.programList("code", false, 0, 0))
-                jComboBox2.addItem(p.get("code"));
+        // ── Students: repurpose jComboBox2 as "Search by" selector ───────────
+        jComboBox2.removeAllItems();
+        for (String s : new String[]{"First Name","Last Name","ID","Program","College","Year","Gender"})
+            jComboBox2.addItem(s);
+        jComboBox2.setSelectedItem("First Name");
 
-            jComboBox6.removeAllItems();
-            jComboBox6.addItem("All Colleges");
-            for (java.util.Map<String,String> c : SqliteDb.collegeList("code", false, 0, 0))
-                jComboBox6.addItem(c.get("code"));
+        // Hide the old extra filter combos — they are no longer used
+        jComboBox5.setVisible(false);
+        jComboBox6.setVisible(false);
 
-            jComboBox5.removeAllItems();
-            jComboBox5.addItem("All Year Levels");
-            for (String y : new String[]{"1","2","3","4","5"}) jComboBox5.addItem(y);
+        // ── Programs: repurpose jComboBox3 as "Search by" selector ───────────
+        jComboBox3.removeAllItems();
+        for (String s : new String[]{"Name","Code","College"})
+            jComboBox3.addItem(s);
+        jComboBox3.setSelectedItem("Name");
 
-            jComboBox3.removeAllItems();
-            jComboBox3.addItem("All Colleges");
-            for (java.util.Map<String,String> c : SqliteDb.collegeList("code", false, 0, 0))
-                jComboBox3.addItem(c.get("code"));
+        // ── Colleges: populate the programmatically-added combo ───────────────
+        if (collegeSearchCombo != null) {
+            collegeSearchCombo.removeAllItems();
+            for (String s : new String[]{"Name","Code"})
+                collegeSearchCombo.addItem(s);
+            collegeSearchCombo.setSelectedItem("Name");
+            fixComboBox(collegeSearchCombo);
+        }
 
-            jComboBox2.setSelectedItem("All Programs");
-            jComboBox6.setSelectedItem("All Colleges");
-            jComboBox5.setSelectedItem("All Year Levels");
-            jComboBox3.setSelectedItem("All Colleges");
-
-            fixComboBox(jComboBox2); fixComboBox(jComboBox3);
-            fixComboBox(jComboBox5); fixComboBox(jComboBox6);
-        } catch (java.sql.SQLException e) { e.printStackTrace(); }
+        fixComboBox(jComboBox2);
+        fixComboBox(jComboBox3);
     }
 
-    private void applyCollegeFiltersAndRefresh() {
-        collegeNameQuery = jTextField3.getText().trim();
-        if (collegeNameQuery.equals("Search colleges...")) collegeNameQuery = "";
-        currentCollegePage = 1; renderCollegePage();
+    // ── Translators: UI label → DB field name ─────────────────────────────────
+    private String studentFieldFromLabel(String label) {
+        return switch (label == null ? "" : label) {
+            case "ID"         -> "id";
+            case "Last Name"  -> "lastname";
+            case "Program"    -> "program_code";
+            case "College"    -> "college_code";
+            case "Year"       -> "year";
+            case "Gender"     -> "gender";
+            default           -> "firstname";   // "First Name" or fallback
+        };
+    }
+
+    private String programFieldFromLabel(String label) {
+        return switch (label == null ? "" : label) {
+            case "Code"    -> "code";
+            case "College" -> "college";
+            default        -> "name";           // "Name" or fallback
+        };
+    }
+
+    private String collegeFieldFromLabel(String label) {
+        return "Code".equals(label) ? "code" : "name";
+    }
+
+    // ── Apply filters ─────────────────────────────────────────────────────────
+    private void applyStudentFiltersAndRefresh() {
+        studentNameQuery = jTextField1.getText().trim();
+        if (studentNameQuery.equals("Search students...")) studentNameQuery = "";
+
+        String label = jComboBox2.getSelectedItem() != null
+            ? jComboBox2.getSelectedItem().toString() : "First Name";
+        studentSearchField = studentFieldFromLabel(label);
+
+        currentStudentPage = 1;
+        renderStudentPage();
     }
 
     private void applyProgramFiltersAndRefresh() {
         programNameQuery = jTextField2.getText().trim();
         if (programNameQuery.equals("Search programs...")) programNameQuery = "";
-        programCollegeFilter = jComboBox3.getSelectedItem() != null
-            ? jComboBox3.getSelectedItem().toString() : "All Colleges";
-        currentProgramPage = 1; renderProgramPage();
+
+        String label = jComboBox3.getSelectedItem() != null
+            ? jComboBox3.getSelectedItem().toString() : "Name";
+        programSearchField = programFieldFromLabel(label);
+
+        currentProgramPage = 1;
+        renderProgramPage();
     }
 
-    private void applyStudentFiltersAndRefresh() {
-        studentNameQuery = jTextField1.getText().trim();
-        if (studentNameQuery.equals("Search students...")) studentNameQuery = "";
-        studentProgramFilter = jComboBox2.getSelectedItem() != null
-            ? jComboBox2.getSelectedItem().toString() : "All Programs";
-        studentCollegeFilter = jComboBox6.getSelectedItem() != null
-            ? jComboBox6.getSelectedItem().toString() : "All Colleges";
-        studentYearFilter = jComboBox5.getSelectedItem() != null
-            ? jComboBox5.getSelectedItem().toString() : "All Year Levels";
-        currentStudentPage = 1; renderStudentPage();
+    private void applyCollegeFiltersAndRefresh() {
+        collegeNameQuery = jTextField3.getText().trim();
+        if (collegeNameQuery.equals("Search colleges...")) collegeNameQuery = "";
+
+        String label = (collegeSearchCombo != null && collegeSearchCombo.getSelectedItem() != null)
+            ? collegeSearchCombo.getSelectedItem().toString() : "Name";
+        collegeSearchField = collegeFieldFromLabel(label);
+
+        currentCollegePage = 1;
+        renderCollegePage();
     }
 
-    // ── Render pages (unchanged) ──────────────────────────────────────────────
+    // ── Render pages ──────────────────────────────────────────────────────────
     private void renderCollegePage() {
         javax.swing.table.DefaultTableModel m =
             (javax.swing.table.DefaultTableModel) tblColleges.getModel();
         m.setRowCount(0);
         try {
-            int total = SqliteDb.collegeCountFiltered(collegeNameQuery);
+            int total = SqliteDb.collegeCountFiltered(collegeNameQuery, collegeSearchField);
             int totalPages = Math.max(1, (int) Math.ceil((double) total / PAGE_SIZE));
             currentCollegePage = Math.max(1, Math.min(currentCollegePage, totalPages));
             java.util.List<java.util.Map<String,String>> rows = SqliteDb.collegeListFiltered(
-                collegeSortBy, collegeSortDesc, currentCollegePage, PAGE_SIZE, collegeNameQuery);
+                collegeSortBy, collegeSortDesc, currentCollegePage, PAGE_SIZE,
+                collegeNameQuery, collegeSearchField);
             for (java.util.Map<String,String> c : rows)
                 m.addRow(new Object[]{ c.get("code"), c.get("name"), "" });
             int showing = rows.size();
@@ -424,12 +471,12 @@ public class GUI extends javax.swing.JFrame {
             (javax.swing.table.DefaultTableModel) tblPrograms.getModel();
         m.setRowCount(0);
         try {
-            int total = SqliteDb.programCountFiltered(programNameQuery, programCollegeFilter);
+            int total = SqliteDb.programCountFiltered(programNameQuery, programSearchField);
             int totalPages = Math.max(1, (int) Math.ceil((double) total / PAGE_SIZE));
             currentProgramPage = Math.max(1, Math.min(currentProgramPage, totalPages));
             java.util.List<java.util.Map<String,String>> rows = SqliteDb.programListFiltered(
                 programSortBy, programSortDesc, currentProgramPage, PAGE_SIZE,
-                programNameQuery, programCollegeFilter);
+                programNameQuery, programSearchField);
             java.util.Map<String,String> collegeNames = new java.util.HashMap<>();
             for (java.util.Map<String,String> c : SqliteDb.collegeList("code", false, 0, 0))
                 collegeNames.put(c.get("code"), c.get("name"));
@@ -453,13 +500,12 @@ public class GUI extends javax.swing.JFrame {
             (javax.swing.table.DefaultTableModel) tblStudents.getModel();
         m.setRowCount(0);
         try {
-            int total = SqliteDb.studentCountFiltered(
-                studentNameQuery, studentProgramFilter, studentCollegeFilter, studentYearFilter);
+            int total = SqliteDb.studentCountFiltered(studentNameQuery, studentSearchField);
             int totalPages = Math.max(1, (int) Math.ceil((double) total / PAGE_SIZE));
             currentStudentPage = Math.max(1, Math.min(currentStudentPage, totalPages));
             java.util.List<java.util.Map<String,String>> rows = SqliteDb.studentListFiltered(
                 studentSortBy, studentSortDesc, currentStudentPage, PAGE_SIZE,
-                studentNameQuery, studentProgramFilter, studentCollegeFilter, studentYearFilter);
+                studentNameQuery, studentSearchField);
             for (java.util.Map<String,String> s : rows) {
                 m.addRow(new Object[]{
                     s.get("id"), s.get("firstname"), s.get("lastname"),
@@ -476,7 +522,7 @@ public class GUI extends javax.swing.JFrame {
         } catch (java.sql.SQLException e) { e.printStackTrace(); }
     }
 
-    // ── MODIFIED: Row renderer with hover highlight ───────────────────────────
+    // ── Row renderer with hover highlight ─────────────────────────────────────
     private void applyTransparentRowRenderer(javax.swing.JTable table) {
         table.setDefaultRenderer(Object.class, new javax.swing.table.DefaultTableCellRenderer() {
             @Override
@@ -489,7 +535,6 @@ public class GUI extends javax.swing.JFrame {
                 setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
                 setFont(new java.awt.Font("Syne", java.awt.Font.PLAIN, 13));
 
-                // Determine which hover variable to use by table identity
                 int hovered = (t == tblStudents) ? hoveredStudentRow
                             : (t == tblPrograms)  ? hoveredProgramRow
                             : hoveredCollegeRow;
@@ -502,7 +547,6 @@ public class GUI extends javax.swing.JFrame {
                     setForeground(C_TEXT);
                 }
 
-                // Subtle horizontal rule only — no heavy box borders
                 setBorder(javax.swing.BorderFactory.createCompoundBorder(
                     javax.swing.BorderFactory.createMatteBorder(0, 0, 1, 0, C_BORDER),
                     javax.swing.BorderFactory.createEmptyBorder(0, 10, 0, 10)
@@ -512,10 +556,8 @@ public class GUI extends javax.swing.JFrame {
         });
     }
 
-    // ── MODIFIED: Header — styled via installSortHeaderRenderer ──────────────
+    // ── Header renderer ───────────────────────────────────────────────────────
     private void makeHeaderTransparent(javax.swing.JTable table) {
-        // Actual rendering is fully handled by installSortHeaderRenderer.
-        // Just disable reordering here.
         table.getTableHeader().setReorderingAllowed(false);
         table.getTableHeader().setCursor(
             new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
@@ -536,7 +578,7 @@ public class GUI extends javax.swing.JFrame {
         scroll.setViewportBorder(javax.swing.BorderFactory.createEmptyBorder());
     }
 
-    // ── MODIFIED: Actions column renderer — hover-aware ──────────────────────
+    // ── Actions column renderer ───────────────────────────────────────────────
     private javax.swing.table.TableCellRenderer makeActionsRenderer() {
         return (table, value, isSelected, hasFocus, row, col) -> {
 
@@ -556,7 +598,6 @@ public class GUI extends javax.swing.JFrame {
             javax.swing.JButton editBtn = makeActionBtn("✏ Edit",   C_GREEN, isHovered);
             javax.swing.JButton delBtn  = makeActionBtn("✕ Delete", C_RED,   isHovered);
 
-            // Thin vertical divider
             javax.swing.JSeparator sep = new javax.swing.JSeparator(javax.swing.JSeparator.VERTICAL);
             sep.setPreferredSize(new java.awt.Dimension(1, 14));
             sep.setForeground(C_BORDER);
@@ -568,7 +609,6 @@ public class GUI extends javax.swing.JFrame {
         };
     }
 
-    // ── NEW: Action button factory ────────────────────────────────────────────
     private javax.swing.JButton makeActionBtn(String label, java.awt.Color color,
                                                boolean hovered) {
         javax.swing.JButton btn = new javax.swing.JButton(label);
@@ -585,7 +625,7 @@ public class GUI extends javax.swing.JFrame {
         return btn;
     }
 
-    // ── MODIFIED: Header renderer — polished with accent sort arrow ───────────
+    // ── Sort-arrow header renderer ────────────────────────────────────────────
     private void installSortHeaderRenderer(
             javax.swing.JTable table,
             String[] dbCols,
@@ -600,7 +640,6 @@ public class GUI extends javax.swing.JFrame {
                 lbl.setForeground(C_TEXT);
                 lbl.setFont(new java.awt.Font("Syne", java.awt.Font.BOLD, 12));
                 lbl.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-                // Two-pixel accent bottom border
                 lbl.setBorder(javax.swing.BorderFactory.createCompoundBorder(
                     javax.swing.BorderFactory.createMatteBorder(0, 0, 2, 0, C_ACCENT),
                     javax.swing.BorderFactory.createEmptyBorder(6, 8, 6, 8)
@@ -619,7 +658,7 @@ public class GUI extends javax.swing.JFrame {
         );
     }
 
-    // ── Actions column wiring (unchanged) ─────────────────────────────────────
+    // ── Actions column wiring ─────────────────────────────────────────────────
     private void setupActionsColumn() {
         tblStudents.getColumnModel().getColumn(7).setCellRenderer(makeActionsRenderer());
         tblPrograms.getColumnModel().getColumn(3).setCellRenderer(makeActionsRenderer());
@@ -659,7 +698,7 @@ public class GUI extends javax.swing.JFrame {
         });
     }
 
-    // ── Resize (unchanged, removed stray invokeLater self-call) ──────────────
+    // ── Resize ────────────────────────────────────────────────────────────────
     private void resizePanels() {
         int w = getContentPane().getWidth();
         int h = getContentPane().getHeight();
@@ -742,7 +781,7 @@ public class GUI extends javax.swing.JFrame {
     public void reloadCollegeTable() { currentCollegePage = 1; renderCollegePage(); }
     public void reloadAllTables()    { reloadStudentTable(); reloadProgramTable(); reloadCollegeTable(); updateCounts(); }
 
-    // ── MODIFIED: ComboBox styling ────────────────────────────────────────────
+    // ── ComboBox styling ──────────────────────────────────────────────────────
     private void fixComboBox(javax.swing.JComboBox combo) {
         combo.setBackground(java.awt.Color.WHITE);
         combo.setForeground(C_TEXT);
@@ -770,7 +809,7 @@ public class GUI extends javax.swing.JFrame {
         });
     }
 
-    // ── MODIFIED: Nav button styling ──────────────────────────────────────────
+    // ── Nav button styling ────────────────────────────────────────────────────
     private void styleNavButton(javax.swing.JButton btn, javax.swing.JButton[] allBtns) {
         btn.setBackground(C_NAV);
         btn.setForeground(C_TEXT_DIM);
@@ -814,33 +853,49 @@ public class GUI extends javax.swing.JFrame {
         tblColleges.setAutoResizeMode(javax.swing.JTable.AUTO_RESIZE_ALL_COLUMNS);
     }
 
+    /**
+     * Layout: each panel now has ONE search bar + ONE "Search by" dropdown.
+     *
+     *   [ Search text field .............. ] [ Search by ▾ ] [ + Add Button ]
+     */
     private void layoutRoundedPanels(int innerW) {
-        int pw    = innerW - 16;
-        int topY  = 12, filterY = 58, rowH = 30;
+        int pw      = innerW - 16;
+        int topY    = 12, filterY = 58, rowH = 30;
 
-        // Students panel
-        jLabel4.setBounds(6,  topY + 4, 90,  22);
-        jLabel2.setBounds(100, topY + 4, 200, 22);
-        jButton7.setBounds(pw - 133, topY, 140, rowH);
-        int fw4 = Math.max(60, (pw - 3 * 8) / 4);
-        jTextField1.setBounds(6,               filterY, fw4, rowH);
-        jComboBox2 .setBounds(6 + fw4 + 8,     filterY, fw4, rowH);
-        jComboBox6 .setBounds(6 + 2*(fw4+8),   filterY, fw4, rowH);
-        jComboBox5 .setBounds(6 + 3*(fw4+8),   filterY, fw4, rowH);
+        // Split available width roughly 60 / 30 / add-button for the filter row
+        int addBtnW = 140;
+        int gap     = 8;
+        int filterW = pw - addBtnW - gap;        // total width for search + combo
+        int searchW = (int)(filterW * 0.62);     // search bar gets ~62 %
+        int comboW  = filterW - searchW - gap;   // "Search by" gets the rest
 
-        // Programs panel
-        jLabel5.setBounds(6,  topY + 4, 100, 22);
-        jLabel3.setBounds(110, topY + 4, 80,  22);
-        jButton5.setBounds(pw - 133, topY, 140, rowH);
-        int fw2 = Math.max(80, (pw - 8) / 2);
-        jTextField2.setBounds(6,         filterY, fw2, rowH);
-        jComboBox3 .setBounds(6+fw2+8,   filterY, fw2, rowH);
+        // ── Students panel ────────────────────────────────────────────────────
+        jLabel4.setBounds(6,    topY + 4,   90,    22);
+        jLabel2.setBounds(100,  topY + 4,   200,   22);
+        jButton7.setBounds(pw - addBtnW,    topY,  addBtnW, rowH);
 
-        // Colleges panel
-        jLabel7.setBounds(6,  topY + 4, 100, 22);
-        jLabel8.setBounds(110, topY + 4, 80,  22);
-        jButton6.setBounds(pw - 133, topY, 140, rowH);
-        jTextField3.setBounds(6, filterY, pw - 6, rowH);
+        jTextField1.setBounds(6,                filterY, searchW, rowH);
+        jComboBox2 .setBounds(6 + searchW + gap, filterY, comboW,  rowH);
+        // Old filter combos are hidden
+        jComboBox5.setVisible(false);
+        jComboBox6.setVisible(false);
+
+        // ── Programs panel ────────────────────────────────────────────────────
+        jLabel5.setBounds(6,    topY + 4,   100,   22);
+        jLabel3.setBounds(110,  topY + 4,   80,    22);
+        jButton5.setBounds(pw - addBtnW,    topY,  addBtnW, rowH);
+
+        jTextField2.setBounds(6,                filterY, searchW, rowH);
+        jComboBox3 .setBounds(6 + searchW + gap, filterY, comboW,  rowH);
+
+        // ── Colleges panel ────────────────────────────────────────────────────
+        jLabel7.setBounds(6,    topY + 4,   100,   22);
+        jLabel8.setBounds(110,  topY + 4,   80,    22);
+        jButton6.setBounds(pw - addBtnW,    topY,  addBtnW, rowH);
+
+        jTextField3.setBounds(6,                filterY, searchW, rowH);
+        if (collegeSearchCombo != null)
+            collegeSearchCombo.setBounds(6 + searchW + gap, filterY, comboW, rowH);
     }
 
     // ═════════════════════════════════════════════════════════════════════════
@@ -1195,7 +1250,7 @@ public class GUI extends javax.swing.JFrame {
 
         jComboBox3.setFont(new java.awt.Font("Syne", 0, 13));
         jComboBox3.setForeground(new java.awt.Color(26, 26, 46));
-        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "All Colleges" }));
+        jComboBox3.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "Name" }));
         jComboBox3.addActionListener(this::jComboBox3ActionPerformed);
 
         jButton5.setBackground(new java.awt.Color(26, 26, 46));
@@ -1321,7 +1376,7 @@ public class GUI extends javax.swing.JFrame {
 
         jComboBox2.setFont(new java.awt.Font("Syne", 0, 13));
         jComboBox2.setForeground(new java.awt.Color(26, 26, 46));
-        jComboBox2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "All Programs" }));
+        jComboBox2.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "First Name" }));
         jComboBox2.addActionListener(this::jComboBox2ActionPerformed);
 
         jComboBox6.setFont(new java.awt.Font("Syne", 0, 13));
@@ -1412,8 +1467,8 @@ public class GUI extends javax.swing.JFrame {
     private void jTextField3ActionPerformed(java.awt.event.ActionEvent evt) { applyCollegeFiltersAndRefresh(); }
     private void jComboBox2ActionPerformed(java.awt.event.ActionEvent evt)  { applyStudentFiltersAndRefresh(); }
     private void jComboBox3ActionPerformed(java.awt.event.ActionEvent evt)  { applyProgramFiltersAndRefresh(); }
-    private void jComboBox5ActionPerformed(java.awt.event.ActionEvent evt)  { applyStudentFiltersAndRefresh(); }
-    private void jComboBox6ActionPerformed(java.awt.event.ActionEvent evt)  { applyStudentFiltersAndRefresh(); }
+    private void jComboBox5ActionPerformed(java.awt.event.ActionEvent evt)  { /* hidden — no-op */ }
+    private void jComboBox6ActionPerformed(java.awt.event.ActionEvent evt)  { /* hidden — no-op */ }
 
     private void btnStudentsNextActionPerformed(java.awt.event.ActionEvent evt) { currentStudentPage++; renderStudentPage(); }
     private void btnStudentsPrevActionPerformed(java.awt.event.ActionEvent evt) { currentStudentPage--; renderStudentPage(); }
@@ -1438,17 +1493,17 @@ public class GUI extends javax.swing.JFrame {
     private void jButton6ActionPerformed(java.awt.event.ActionEvent evt) {
         AddCollegeDialog dialog = new AddCollegeDialog(this, true);
         dialog.setLocationRelativeTo(this); dialog.setVisible(true);
-        initFilters(); reloadAllTables();
+        reloadAllTables();
     }
     private void jButton5ActionPerformed(java.awt.event.ActionEvent evt) {
         AddProgramDialog dialog = new AddProgramDialog(this, true);
         dialog.setLocationRelativeTo(this); dialog.setVisible(true);
-        initFilters(); reloadAllTables();
+        reloadAllTables();
     }
     private void jButton7ActionPerformed(java.awt.event.ActionEvent evt) {
         AddStudentDialog dialog = new AddStudentDialog(this, true);
         dialog.setLocationRelativeTo(this); dialog.setVisible(true);
-        initFilters(); reloadAllTables();
+        reloadAllTables();
     }
 
     public static void main(String args[]) {
