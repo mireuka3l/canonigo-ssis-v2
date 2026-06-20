@@ -465,6 +465,52 @@ public class SqliteDb {
         }
         return studentGet(id);
     }
+    
+    public static Map<String,String> studentUpdateFull(
+            String oldId, String newId, String firstname, String lastname,
+            String programCode, String year, String gender)
+            throws SQLException, StudentError {
+
+        oldId       = oldId.trim();
+        newId       = newId.trim();
+        firstname   = firstname.trim();
+        lastname    = lastname.trim();
+        programCode = programCode.trim().toUpperCase();
+        year        = year.trim();
+        gender      = gender.trim();
+
+        if (!VALID_YEARS.contains(year))
+            throw new StudentError("Year must be one of: " + VALID_YEARS);
+        if (!VALID_GENDERS.contains(gender))
+            throw new StudentError("Gender must be one of: " + VALID_GENDERS);
+
+        String sql =
+            "UPDATE student SET id = ?, firstname = ?, lastname = ?, " +
+            "program_code = ?, year = ?, gender = ? WHERE id = ?";
+
+        try (Connection conn = connect();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newId);
+            ps.setString(2, firstname);
+            ps.setString(3, lastname);
+            ps.setString(4, programCode);
+            ps.setInt   (5, Integer.parseInt(year));
+            ps.setString(6, gender);
+            ps.setString(7, oldId);
+            try {
+                if (ps.executeUpdate() == 0)
+                    throw new StudentError("Student '" + oldId + "' not found.");
+            } catch (SQLException e) {
+                if (e.getMessage().contains("UNIQUE"))
+                    throw new StudentError("Student ID '" + newId + "' already exists.");
+                if (e.getMessage().contains("FOREIGN KEY"))
+                    throw new StudentError("Program '" + programCode + "' does not exist.");
+                throw e;
+            }
+        }
+        return Map.of("id", newId, "firstname", firstname, "lastname", lastname,
+                      "program_code", programCode, "year", year, "gender", gender);
+    }
 
     public static void studentDelete(String id) throws SQLException, StudentError {
         String sql = "DELETE FROM student WHERE id = ?";
@@ -691,6 +737,8 @@ public class SqliteDb {
             return toList(ps.executeQuery(), "code", "name");
         }
     }
+    
+
 
     // ═════════════════════════════════════════════════════════════════════════
     //  Utility helpers

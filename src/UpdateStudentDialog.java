@@ -20,7 +20,6 @@ private String originalId;
         this.originalId = id;
         
         jTextField3.setText(id);
-        jTextField3.setEditable(false);
         jTextField1.setText(firstname);
         jTextField2.setText(lastname);
         jComboBox3.setSelectedItem(gender);
@@ -280,19 +279,37 @@ private String originalId;
     }//GEN-LAST:event_jTextField3ActionPerformed
 
     private void jButton3ActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButton3ActionPerformed
+        String newId     = jTextField3.getText().trim();
         String firstname = jTextField1.getText().trim();
         String lastname  = jTextField2.getText().trim();
         String program   = jComboBox1.getSelectedItem() != null ? jComboBox1.getSelectedItem().toString() : "";
         String year      = jComboBox2.getSelectedItem().toString();
         String gender    = jComboBox3.getSelectedItem().toString();
 
-        if (firstname.isEmpty() || lastname.isEmpty() || program.isEmpty()) {
+        if (firstname.isEmpty() || lastname.isEmpty() || program.isEmpty() || newId.isEmpty()) {
             javax.swing.JOptionPane.showMessageDialog(this,
                 "All fields are required.", "Error", javax.swing.JOptionPane.ERROR_MESSAGE);
             return;
         }
+
+        if (!newId.matches("\\d{4}-\\d{4}")) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                "ID must be in format YYYY-NNNN (e.g. 2024-0001).", "Error",
+                javax.swing.JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int idYear = Integer.parseInt(newId.substring(0, 4));
+        int currentYear = java.time.Year.now().getValue();
+        if (idYear < 2010 || idYear > currentYear + 1) {
+            javax.swing.JOptionPane.showMessageDialog(this,
+                "ID year must be between 2010 and " + (currentYear + 1) + ".", "Error",
+                javax.swing.JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
         try {
-            SqliteDb.studentUpdate(originalId, firstname, lastname, program, year, gender);
+            SqliteDb.studentUpdateFull(originalId, newId, firstname, lastname, program, year, gender);
             if (getOwner() instanceof GUI) ((GUI) getOwner()).reloadAllTables();
             dispose();
         } catch (SqliteDb.StudentError | java.sql.SQLException e) {
